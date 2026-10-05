@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="סיפורי התנ״ך לילדים - מבריאת העולם, לפי הסדר, עם הקראה בקול">
+<title>סיפורי התנ״ך שלנו</title>
+<style>
+:root{--bg:#f6f1e7;--card:#fffdf8;--ink:#2d2a26;--muted:#7a7368;--accent:#8a5a2b;--accent2:#2e6e5e;--line:#e5dcc9;--tag:#efe6d2;--soon:#b9b0a0;--shadow:0 2px 10px rgba(60,45,20,.08)}
+.dark{--bg:#1c1a17;--card:#27241f;--ink:#eee8dc;--muted:#a79d8d;--accent:#d9a45b;--accent2:#7fc3b0;--line:#3a352c;--tag:#332e26;--soon:#6b6357;--shadow:0 2px 10px rgba(0,0,0,.35)}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,"Noto Sans Hebrew",sans-serif;background:var(--bg);color:var(--ink);line-height:1.7;min-height:100vh;overflow-x:hidden}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px 90px}
+header{padding:22px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+h1{font-size:1.5rem;color:var(--accent)}
+.sub{color:var(--muted);font-size:.92rem;margin-top:2px}
+.iconbtn{background:var(--card);border:1px solid var(--line);border-radius:12px;min-width:44px;min-height:44px;font-size:1.15rem;cursor:pointer;color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin:14px 0}
+.unit{display:block;width:100%;text-align:right;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:14px 16px;margin:10px 0;cursor:pointer;color:var(--ink);font-family:inherit}
+.unit.soon{opacity:.65;cursor:default}
+.unit h2{font-size:1.1rem}
+.unit .meta{color:var(--muted);font-size:.85rem;margin-top:3px}
+.badge{display:inline-block;background:var(--tag);border-radius:999px;padding:2px 10px;font-size:.78rem;margin-inline-start:6px;color:var(--accent2)}
+.badge.soonb{color:var(--soon)}
+.badge.done{background:var(--accent2);color:#fff}
+.storybtn{display:flex;align-items:center;gap:12px;width:100%;text-align:right;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin:9px 0;cursor:pointer;color:var(--ink);font-family:inherit;box-shadow:var(--shadow)}
+.storybtn .num{flex:0 0 38px;height:38px;border-radius:50%;background:var(--tag);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700}
+.storybtn h3{font-size:1.02rem}
+.storybtn .src{color:var(--muted);font-size:.82rem}
+.storybtn .tick{margin-inline-start:auto;font-size:1.2rem}
+.agetag{background:var(--tag);color:var(--accent2);border-radius:8px;padding:1px 8px;font-size:.75rem;font-weight:700}
+.back{background:none;border:none;color:var(--accent2);font-size:1rem;cursor:pointer;padding:10px 4px;font-family:inherit;min-height:44px}
+.story h2{font-size:1.35rem;color:var(--accent);margin-bottom:2px}
+.story .src{color:var(--muted);font-size:.9rem;margin-bottom:8px}
+.story p{margin:12px 0;font-size:1.08rem}
+.note{background:var(--tag);border-radius:12px;padding:10px 12px;font-size:.9rem;color:var(--muted);margin:12px 0}
+.player{position:sticky;bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:10px;display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.player button{border:1px solid var(--line);background:var(--tag);color:var(--ink);border-radius:12px;min-width:52px;min-height:44px;font-size:1.05rem;cursor:pointer;font-family:inherit}
+.player button.main{background:var(--accent2);color:#fff;border-color:var(--accent2);flex:1;font-weight:700}
+.player .st{color:var(--muted);font-size:.8rem;width:100%;text-align:center}
+.searchbox{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:1rem;font-family:inherit;margin:8px 0}
+.progressline{color:var(--muted);font-size:.85rem;margin-top:4px}
+footer{color:var(--muted);font-size:.82rem;text-align:center;padding:24px 0 8px}
+a{color:var(--accent2)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>סיפורי התנ״ך שלנו</h1>
+    <div class="sub">מבריאת העולם ועד שיבת ציון - לפי הסדר, לקריאה ולהאזנה</div>
+  </div>
+  <button class="iconbtn" id="darkBtn" title="מצב לילה" aria-label="מצב לילה">🌙</button>
+</header>
+<main id="app"></main>
+<footer>נבנה באהבה למשפחה שלנו · יחידה 1 מתוך 13 · המקור: ספרי התנ״ך</footer>
+</div>
+<script>
+"use strict";
+/* ===== DATA (structured for future search engine: unit/story ids, book, chapters, topics, characters) ===== */
+const UNITS=[
+{id:1,title:"בראשית: מבריאה ועד בבל",book:"בראשית",chapters:"א–יא",status:"ready",stories:[
+{id:"1-1",n:1,title:"בריאת העולם בשישה ימים",book:"בראשית",chapters:"א–ב",ages:[5,11,13],holiday:"שבת",topics:["בריאה","שבת","שבעת ימי בראשית"],characters:["אלוהים","אדם","חוה"],summary:"איך נברא העולם בשישה ימים, ולמה דווקא ביום השביעי נחים",
+body:["בהתחלה, לפני הכול, לא היה שום דבר. לא שמים, לא ארץ, לא אור. רק חושך גדול ושקט. ואז אלוהים אמר: \"יהי אור!\" - ואור נפתח בעולם. אלוהים הפריד בין האור לחושך: לאור קרא יום, ולחושך קרא לילה. זה היה היום הראשון.","ביום השני אלוהים עשה את הרקיע - הכיפה הכחולה הענקית שמעלינו, השמים. ביום השלישי הוא אסף את המים למקום אחד, ונראתה היבשה. למים קרא ימים, ועל היבשה צמחו עשבים, פרחים ועצים מלאים בפרי.","ביום הרביעי אלוהים שם בשמים את השמש, שמאירה ביום, ואת הירח והכוכבים, שמנצנצים בלילה. ביום החמישי נולדו הדגים ששוחים בים והציפורים שעפות בשמים.","וביום השישי - החיות: אריות וג'ירפות, פילים וצבים, חיות גדולות וקטנות. ואז אלוהים ברא את האדם, איש ואישה, ואמר להם: העולם הזה שלכם. שמרו עליו וטפלו בו.","אלוהים ראה את כל אשר עשה - והנה, טוב מאוד. וביום השביעי הוא שבת ונח. לכן גם אנחנו, בכל שבת, עוצרים, נחים, מסתכלים על העולם ואומרים: איזה יופי של עולם יש לנו."]},
+{id:"1-2",n:2,title:"אדם וחוה ועץ הדעת",book:"בראשית",chapters:"ב–ג",ages:[5,11,13],holiday:"",topics:["גן עדן","בחירה","אחריות"],characters:["אדם","חוה","הנחש"],summary:"הגן היפה בעולם, פרי אחד אסור, ובחירה ששינתה הכול",
+body:["את האדם הראשון שם אלוהים בגן היפה בעולם - גן עדן. בגן גדלו עצים מלאים בפרי מתוק, ונהר זרם והשקה את הכול. אלוהים אמר לאדם: מכל עצי הגן תוכל לאכול, אבל מעץ אחד, עץ הדעת, אל תאכל.","אלוהים ראה שהאדם לבדו, וזה לא טוב. הוא הביא אליו את כל החיות, והאדם נתן לכל אחת שם: לסוס קרא סוס, לכלב קרא כלב. אבל חבר באמת עדיין לא היה לו. אז אלוהים הרדים את האדם, ומצלעו בנה את חוה - האישה הראשונה. יחד הם חיו בגן בשלום, בלי פחד ובלי בושה.","יום אחד בא הנחש, הערמומי מכל החיות, ואמר לחוה: למה שלא תטעמי מהעץ היפה הזה? מי שאוכל ממנו ידע הכול, כמו אלוהים. חוה הסתכלה על הפרי. הוא נראה כל כך טעים. היא טעמה - וגם אדם טעם.","ואז, פתאום, הכול השתנה. הם הבינו שהם עירומים והתביישו, ומיהרו להתחבא. כשאלוהים קרא: איכה? איפה אתה? - הם יצאו מהמחבוא. אדם אמר: חוה נתנה לי. וחוה אמרה: הנחש אמר לי. כולם האשימו מישהו אחר.","מפני שלא שמעו לדברי אלוהים, אדם וחוה נאלצו לצאת מגן עדן. זה עצוב, אבל זה לא סוף הסיפור: אלוהים עשה להם בגדים שיחממו אותם, והם יצאו לעולם הגדול לבנות בית, משפחה וחיים. ומאז, בכל פעם שאנחנו צריכים לבחור בין מה שקל ומה שנכון - הסיפור הזה מלווה אותנו."]},
+{id:"1-3",n:3,title:"קין והבל",book:"בראשית",chapters:"ד",ages:[11,13],holiday:"",topics:["קנאה","כעס","אחים","אחריות"],characters:["קין","הבל","אלוהים"],summary:"שני אחים, שתי מתנות, וקנאה שיצאה משליטה",
+note:"הסיפור עוסק בפגיעה קשה בתוך המשפחה. מומלץ לגילאי 11 ו-13, ולדבר עליו אחרי הקריאה.",
+body:["לאדם וחוה נולדו שני בנים: קין הבכור, שעבד את האדמה וגידל תבואה, והבל הצעיר, שהיה רועה צאן.","יום אחד הביאו שניהם מתנה לאלוהים. הבל הביא מטוב כבשיו, מכל הלב. קין הביא מפירות האדמה. אלוהים שמח במתנה של הבל, ובמתנה של קין שמח פחות.","קין קינא. הלב שלו נעשה כבד וכועס. ואז אלוהים אמר לו משפט שכדאי לזכור לכל החיים: אם תיטיב, טוב לך. ואם לא - החטא מחכה בפתח כמו חיה, אבל אתה יכול לשלוט בו. כלומר: הכעס הוא שלך, ואתה מחליט מה לעשות איתו.","אבל קין לא עצר. הוא לקח את אחיו לשדה, ושם עשה מעשה נורא: הוא פגע באחיו, והבל לא קם עוד.","אלוהים שאל את קין: איפה הבל אחיך? וקין ענה: השומר אחי אנוכי? כאילו זה בכלל לא העניין שלו. אבל אלוהים ידע הכול: קול דמי אחיך צועקים אלי מן האדמה.","קין נענש: הוא נד ונדנד בעולם בלי בית קבוע. ועם זאת, אלוהים שם עליו אות שאיש לא יפגע בו - כי גם כשמישהו עושה דבר נורא, החיים עצמם קדושים.","ומה לומדים מזה? שקנאה היא רגש שכולם מכירים. השאלה היא לא אם נכעס, אלא מה נעשה עם הכעס. ועל השאלה השומר אחי אנוכי? התשובה האמיתית היא: כן. אנחנו שומרים זה על זה."]},
+{id:"1-4",n:4,title:"נוח והמבול",book:"בראשית",chapters:"ו–ט",ages:[5,11,13],holiday:"פרשת נוח",topics:["מבול","תיבה","קשת","ברית"],characters:["נוח","היונה","החיות"],summary:"ספינה ענקית, חיות זוגות זוגות, וקשת של תקווה",
+body:["הדור של נוח היה דור קשה: אנשים רימו, גנבו ופגעו זה בזה. אלוהים נעצב מאוד ממה שקרה לעולם, והחליט לשטוף את הארץ במבול גדול - ולהתחיל מחדש.","אדם אחד היה שונה: נוח. צדיק תמים היה בדורותיו. אלוהים אמר לו: בנה תיבה ענקית מעץ, ספינה שתצוף על המים, כי אני מביא מבול על הארץ.","נוח בנה. שנים ארוכות הוא ניסר ופטיש, בזמן שהשכנים צחקו: ספינה? באמצע היבשה? אבל נוח המשיך.","ואז באו החיות: זוגות זוגות, זכר ונקבה - פילים ונמלים, ציפורים וצבים, ג'ירפות וארנבות. כולם עלו לתיבה. נוח, אשתו, בניו ונשותיהם נכנסו, ואלוהים סגר בעדם את הדלת.","ארבעים יום וארבעים לילה ירד גשם. המים עלו וכיסו הכול, גם את ההרים הגבוהים. רק התיבה צפה על פני המים - עולם קטן ושלם בתוך הסערה.","כשהגשם נח, נוח שלח עורב, ואחריו יונה. בפעם הראשונה היא חזרה: אין עוד מקום לנוח עליו. בפעם השנייה היא חזרה עם עלה זית במקורה - סימן שהמים ירדו! ובפעם השלישית היא לא חזרה - היא מצאה בית.","נוח ומשפחתו יצאו לארץ יבשה, ואיתם כל החיות. אלוהים שם בענן קשת צבעונית ואמר: זו הברית שלי - לעולם לא אשמיד שוב את כל החי במבול. הקשת תזכיר לי, וגם לכם. ועד היום, כשרואים קשת בענן, אפשר לזכור: אחרי כל סערה באה תקווה."]},
+{id:"1-5",n:5,title:"מגדל בבל",book:"בראשית",chapters:"יא",ages:[5,11,13],holiday:"",topics:["מגדל בבל","שפות","גאווה"],characters:["בני האדם","אלוהים"],summary:"מגדל עד השמיים, ואיך נולדו השפות של העולם",
+body:["אחרי המבול, כשמשפחת נוח גדלה והפכה לעמים, כל בני האדם דיברו שפה אחת והבינו זה את זה.","הם התיישבו בעמק בארץ שינער, ויום אחד אמרו: הבה נבנה לנו עיר, ומגדל שראשו בשמים! נעשה לנו שם מפורסם, ואיש לא יפזר אותנו.","הם אפו לבנים באש, הכינו חומר, ובנו. המגדל עלה קומה מעל קומה. הם היו גאים מאוד בעצמם - אולי קצת יותר מדי.","אלוהים ירד לראות את העיר ואת המגדל. הבעיה לא הייתה הבנייה עצמה, אלא שהבונים חשבו רק על התהילה שלהם - נעשה לנו שם - ולא על לעשות טוב בעולם.","אז אלוהים עשה דבר מפתיע: הוא בלבל את שפתם. פתאום בנאי אחד צועק תביא לבנה! והשני שומע מים! אחד מבקש חבל - והשני מביא חמור. אי אפשר היה להמשיך לבנות ככה.","הבנייה נעצרה, והאנשים התפזרו על פני כל הארץ, כל קבוצה עם השפה שלה. לכן העיר נקראה בבל - כי שם בלל אלוהים את שפת כל הארץ.","ואולי יש כאן גם בשורה: מאז יש בעולם שפות רבות, וכדי באמת להבין זה את זה, אנחנו צריכים להקשיב קצת יותר."]}
+]},
+{id:2,title:"האבות: אברהם ויצחק",book:"בראשית",chapters:"יב–כה",status:"soon",stories:[],planned:5},
+{id:3,title:"יעקב ויוסף",book:"בראשית",chapters:"כח–נ",status:"soon",stories:[],planned:7},
+{id:4,title:"יציאת מצרים",book:"שמות",chapters:"א–מ",status:"soon",stories:[],planned:8},
+{id:5,title:"במדבר ועד סף הארץ",book:"במדבר–דברים",chapters:"",status:"soon",stories:[],planned:5},
+{id:6,title:"כניסה לארץ וכיבושה",book:"יהושע",chapters:"",status:"soon",stories:[],planned:7},
+{id:7,title:"השופטים",book:"שופטים",chapters:"",status:"soon",stories:[],planned:5},
+{id:8,title:"רות",book:"רות",chapters:"",status:"soon",stories:[],planned:1},
+{id:9,title:"היווסדות המלוכה",book:"שמואל א",chapters:"",status:"soon",stories:[],planned:8},
+{id:10,title:"דוד המלך",book:"שמואל ב",chapters:"",status:"soon",stories:[],planned:4},
+{id:11,title:"שלמה ותקופת הזהב",book:"מלכים א",chapters:"",status:"soon",stories:[],planned:4},
+{id:12,title:"אליהו ואלישע",book:"מלכים",chapters:"",status:"soon",stories:[],planned:7},
+{id:13,title:"חורבן, גלות ותקוה",book:"מלכים ב–עזרא",chapters:"",status:"soon",stories:[],planned:5}
+];
+/* ===== STATE ===== */
+const $=id=>document.getElementById(id);
+let read={};try{read=JSON.parse(localStorage.getItem("tsr-read")||"{}")}catch(e){read={}}
+function saveRead(){try{localStorage.setItem("tsr-read",JSON.stringify(read))}catch(e){}}
+let dark=localStorage.getItem("tsr-dark")==="1";
+function applyDark(){document.documentElement.classList.toggle("dark",dark);$("darkBtn").textContent=dark?"☀️":"🌙"}
+$("darkBtn").onclick=()=>{dark=!dark;localStorage.setItem("tsr-dark",dark?"1":"0");applyDark()};
+/* ===== SPEECH ===== */
+const synth=window.speechSynthesis;
+let speaking=false,paused=false;
+function heVoice(){if(!synth)return null;const vs=synth.getVoices();return vs.find(v=>/^he/i.test(v.lang))||vs.find(v=>/hebrew|עברית/i.test(v.name))||null}
+if(synth)synth.onvoiceschanged=()=>{};
+function stopSpeak(){if(synth)synth.cancel();speaking=false;paused=false;updPlayer()}
+function speakStory(st){if(!synth){alert("הדפדפן הזה לא תומך בהקראה");return}stopSpeak();const parts=[st.title+"."].concat(st.body);const v=heVoice();const rate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
+parts.forEach((t,i)=>{const u=new SpeechSynthesisUtterance(t);u.lang="he-IL";if(v)u.voice=v;u.rate=rate;u.onend=()=>{if(i===parts.length-1){speaking=false;updPlayer()}};synth.speak(u)});speaking=true;paused=false;updPlayer()}
+function updPlayer(){const b=$("playBtn");if(!b)return;b.textContent=speaking&&!paused?"⏸ השהה":"▶ הקראה";const st=$("pState");if(st)st.textContent=speaking?(paused?"מושהה":"מקריא..."):"";}
+function cycleRate(){let r=parseFloat(localStorage.getItem("tsr-rate")||"0.95");r=r>=1.2?0.8:r>=1?1.2:1;localStorage.setItem("tsr-rate",r);const b=$("rateBtn");if(b)b.textContent="מהירות "+r;return r}
+/* ===== VIEWS ===== */
+const app=$("app");
+function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function viewHome(q){q=(q||"").trim();let h="";
+if(q){h+='<input class="searchbox" id="q" placeholder="חיפוש סיפור..." value="'+esc(q)+'">';let found=[];UNITS.forEach(u=>u.stories.forEach(s=>{if((s.title+s.summary+(s.topics||[]).join(" ")+(s.characters||[]).join(" ")).includes(q))found.push([u,s])}));
+h+='<div class="card"><b>'+found.length+' תוצאות</b></div>';found.forEach(([u,s])=>{h+='<button class="storybtn" onclick="goStory('+u.id+',\''+s.id+'\')"><span class="num">'+s.n+'</span><span><h3>'+esc(s.title)+'</h3><div class="src">'+esc(s.book)+' '+esc(s.chapters)+' · יחידה '+u.id+'</div></span><span class="tick">'+(read[s.id]?"✅":"")+'</span></button>'});app.innerHTML=h;const qi=$("q");qi.focus();qi.oninput=()=>{const v=qi.value;const pos=qi.selectionStart;viewHome(v);const q2=$("q");q2.setSelectionRange(pos,pos)};return}
+h+='<input class="searchbox" id="q" placeholder="חיפוש סיפור...">';
+const totalRead=UNITS.reduce((a,u)=>a+u.stories.filter(s=>read[s.id]).length,0);
+const totalStories=UNITS.reduce((a,u)=>a+u.stories.length,0);
+h+='<div class="card">כאן אוספים את סיפורי התנ״ך הגדולים, <b>לפי הסדר</b> - מהבריאה ועד שיבת ציון. כל סיפור עם מקור מדויק, התאמה לגיל, וכפתור הקראה בקול - לפני השינה או בנסיעה. 🌙🚗<div class="progressline">נקראו '+totalRead+' מתוך '+totalStories+' סיפורים שפורסמו · יחידה 1 מוכנה, והשאר בדרך</div></div>';
+UNITS.forEach(u=>{if(u.status==="ready"){const done=u.stories.filter(s=>read[s.id]).length;
+h+='<button class="unit" onclick="goUnit('+u.id+')"><h2>'+u.id+". "+esc(u.title)+'</h2><div class="meta">'+esc(u.book)+(u.chapters?' '+esc(u.chapters):'')+' · '+u.stories.length+' סיפורים <span class="badge'+(done===u.stories.length?' done':'')+'">'+(done===u.stories.length?'הושלמה ✓':'זמינה עכשיו')+'</span></div></button>'}
+else{h+='<button class="unit soon" disabled><h2>'+u.id+". "+esc(u.title)+'</h2><div class="meta">'+esc(u.book)+' · '+u.planned+' סיפורים <span class="badge soonb">בקרוב</span></div></button>'}});
+app.innerHTML=h;$("q").oninput=e=>viewHome(e.target.value)}
+function viewUnit(uid){const u=UNITS.find(x=>x.id===uid);if(!u)return viewHome();
+let h='<button class="back" onclick="viewHome()">→ חזרה למפה</button><div class="card"><h2 style="color:var(--accent)">'+u.id+". "+esc(u.title)+'</h2><div class="meta" style="color:var(--muted)">'+esc(u.book)+(u.chapters?' '+esc(u.chapters):'')+'</div></div>';
+u.stories.forEach(s=>{h+='<button class="storybtn" onclick="goStory('+u.id+',\''+s.id+'\')"><span class="num">'+s.n+'</span><span><h3>'+esc(s.title)+'</h3><div class="src">'+esc(s.book)+' '+esc(s.chapters)+' · '+s.ages.map(a=>'<span class="agetag">'+a+'+</span>').join(" ")+'</div></span><span class="tick">'+(read[s.id]?"✅":"")+'</span></button>'});
+app.innerHTML=h;window.scrollTo(0,0)}
+function viewStory(uid,sid){const u=UNITS.find(x=>x.id===uid);const s=u&&u.stories.find(x=>x.id===sid);if(!s)return viewHome();stopSpeak();
+let h='<button class="back" onclick="viewUnit('+uid+')">→ חזרה ליחידה</button><div class="card story"><h2>'+esc(s.title)+'</h2><div class="src">'+esc(s.book)+', פרקים '+esc(s.chapters)+(s.holiday?' · 🗓 '+esc(s.holiday):'')+' · '+s.ages.map(a=>'<span class="agetag">'+a+'+</span>').join(" ")+'</div>';
+if(s.note)h+='<div class="note">⚠️ '+esc(s.note)+'</div>';
+s.body.forEach(p=>{h+='<p>'+esc(p)+'</p>'});
+h+='<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="iconbtn" style="padding:0 16px;font-size:.95rem" onclick="toggleRead(\''+s.id+'\')">'+(read[s.id]?"✅ נקרא!":"סמן כנקרא")+'</button>';
+const idx=u.stories.indexOf(s);if(idx<u.stories.length-1)h+='<button class="iconbtn" style="padding:0 16px;font-size:.95rem" onclick="goStory('+uid+',\''+u.stories[idx+1].id+'\')">הסיפור הבא ←</button>';
+h+='</div></div>';
+h+='<div class="player"><button class="main" id="playBtn">▶ הקראה</button><button id="stopBtn">⏹</button><button id="rateBtn">מהירות '+(localStorage.getItem("tsr-rate")||"0.95")+'</button><div class="st" id="pState"></div></div>';
+app.innerHTML=h;window.scrollTo(0,0);updPlayer();
+$("playBtn").onclick=()=>{if(!speaking)speakStory(s);else if(!paused){synth.pause();paused=true;updPlayer()}else{synth.resume();paused=false;updPlayer()}};
+$("stopBtn").onclick=stopSpeak;
+$("rateBtn").onclick=()=>{const r=cycleRate();if(speaking){speakStory(s)}}}
+function toggleRead(sid){read[sid]=!read[sid];saveRead();const m=location.hash.match(/#u(\d+)\/(.+)/);if(m)viewStory(+m[1],m[2])}
+function goUnit(uid){location.hash="#u"+uid}
+function goStory(uid,sid){location.hash="#u"+uid+"/"+sid}
+function route(){const h=location.hash;let m=h.match(/#u(\d+)\/(.+)/);if(m)return viewStory(+m[1],m[2]);m=h.match(/#u(\d+)/);if(m)return viewUnit(+m[1]);viewHome()}
+window.addEventListener("hashchange",route);
+applyDark();route();
+</script>
+</body>
+</html>
