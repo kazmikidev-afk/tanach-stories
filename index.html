@@ -463,7 +463,7 @@ rec=new SR();rec.lang="he-IL";rec.interimResults=true;rec.continuous=false;rec.m
 voiceFinal="";voiceInterim="";listenGotResult=false;
 rec.onsoundstart=function(){listenGotResult=true;var s2=$("voicestate");if(s2&&recActive)s2.textContent="שומע אתכם... ממשיכים לדבר 🎧"};
 rec.onspeechstart=function(){listenGotResult=true};
-rec.onresult=function(ev){listenGotResult=true;var interim="";
+rec.onresult=function(ev){listenGotResult=true;localStorage.removeItem("ts_sr_dead");var interim="";
 for(var i=ev.resultIndex;i<ev.results.length;i++){var tr=ev.results[i][0].transcript;if(ev.results[i].isFinal)voiceFinal+=tr;else interim+=tr}
 voiceInterim=interim;
 var inp=$("chatin");if(inp)inp.value=(voiceFinal+interim).trim()};
@@ -472,7 +472,9 @@ var q=voiceFinal.trim()||voiceInterim.trim();updMic();
 if(!voiceMode)return;
 if(q){listenRetries=0;var inp=$("chatin");if(inp)inp.value=q;chatSend()}
 else if(listenRetries<1){listenRetries++;chatLog.push({me:false,text:"לא שמעתי מילים - אני מקשיב שוב. דברו קרוב למיקרופון 🎤"});renderChat();setTimeout(function(){if(voiceMode&&!speakingAnswer)startListening()},350)}
-else{listenRetries=0;voiceMode=false;chatLog.push({me:false,text:micTroubleMsg()});renderChat();updMic()}};
+else{listenRetries=0;
+if(geminiKey()&&recorderSupported()){srDead=true;localStorage.setItem("ts_sr_dead","1");chatLog.push({me:false,text:"זיהוי הדיבור של המכשיר לא מגיב - אין בעיה! עוברים להקלטה דרך הענן 🎧 לוחצים על 🎤, מדברים, ולוחצים שוב בסוף."});renderChat();startRecorder()}
+else{voiceMode=false;chatLog.push({me:false,text:micTroubleMsg()});renderChat()}}};
 rec.onerror=function(ev){clearWatch();recActive=false;
 if(ev.error==="not-allowed"||ev.error==="service-not-allowed"){listenRetries=0;voiceMode=false;chatLog.push({me:false,text:"כדי לדבר איתי צריך לאשר גישה למיקרופון 🎤 - לוחצים על אפשר/Allow כשהדפדפן שואל. אם נחסם, לוחצים על המנעול בשורת הכתובת ← הרשאות ← מיקרופון ← אפשר, ואז מנסים שוב."});renderChat()}
 else if(ev.error==="network"){chatLog.push({me:false,text:"זיהוי הדיבור צריך חיבור לאינטרנט. נסו שוב בעוד רגע."});renderChat()}
@@ -485,7 +487,7 @@ if(recActive&&!listenGotResult){
 var r2=rec;rec=null;recActive=false;try{r2.onend=null;r2.stop()}catch(e){}
 if(listenRetries<1){listenRetries++;startListening()}
 else{listenRetries=0;
-if(geminiKey()&&recorderSupported()){srDead=true;chatLog.push({me:false,text:"זיהוי הדיבור של המכשיר לא מגיב - אין בעיה! עוברים להקלטה דרך הענן 🎧 לוחצים על 🎤, מדברים, ולוחצים שוב בסוף."});renderChat();startRecorder()}
+if(geminiKey()&&recorderSupported()){srDead=true;localStorage.setItem("ts_sr_dead","1");chatLog.push({me:false,text:"זיהוי הדיבור של המכשיר לא מגיב - אין בעיה! עוברים להקלטה דרך הענן 🎧 לוחצים על 🎤, מדברים, ולוחצים שוב בסוף."});renderChat();startRecorder()}
 else{voiceMode=false;chatLog.push({me:false,text:micTroubleMsg()});renderChat()}}
 updMic()}
 },10000);
@@ -494,7 +496,8 @@ function sleepMs(ms){return new Promise(function(r){setTimeout(r,ms)})}
 var mediaRec=null,recChunks=[],recStream=null,recording=false,transcribing=false,srDead=false,discardRec=false,recTimer=null;
 function geminiKey(){return localStorage.getItem("ts_gemini_key")}
 function recorderSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
-function useRecorder(){return voiceMode&&(!SR||srDead)}
+function srDeadStored(){return localStorage.getItem("ts_sr_dead")==="1"}
+function useRecorder(){return voiceMode&&(!SR||srDead||srDeadStored())}
 async function startRecorder(){
 if(recording||transcribing)return;
 if(!recorderSupported()){chatLog.push({me:false,text:"הדפדפן לא תומך בהקלטה - אפשר להשתמש במיקרופון של המקלדת (Gboard) ואז שליחה."});renderChat();return}
@@ -593,11 +596,11 @@ probe.onresult=function(){got.result=true};probe.onerror=function(ev){got.err=ev
 try{probe.start()}catch(e3){got.err="start-failed"}
 await new Promise(function(r){setTimeout(r,6000)});
 try{probe.onend=null;probe.stop()}catch(e4){}
-if(got.result)out.push("✅ זיהוי הדיבור שומע ומזהה מילים - אמור לעבוד!");
+if(got.result){localStorage.removeItem("ts_sr_dead");out.push("✅ זיהוי הדיבור שומע ומזהה מילים - אמור לעבוד!")}
 else if(got.sound)out.push("⚠️ מגיע קול אבל לא זוהו מילים - לדבר קרוב וברור, או לבדוק שהמיקרופון לא מכוסה");
 else if(got.audio)out.push("⚠️ הזיהוי התחיל אבל לא הגיע קול - בעיית מיקרופון או הרשאה");
 else if(got.err==="not-allowed"||got.err==="service-not-allowed")out.push("❌ שירות הזיהוי חסום - לאשר מיקרופון דרך המנעול בשורת הכתובת");
-else out.push("❌ שירות זיהוי הדיבור לא מגיב בכלל. באנדרואיד זה כמעט תמיד אפליקציית Google: פותחים את חנות Play, מחפשים Google ומעדכנים (וגם שירותי Google Play). אחרי העדכון סוגרים את כרום לגמרי ופותחים מחדש."+(got.err?" ("+got.err+")":""))}
+else {localStorage.setItem("ts_sr_dead","1");out.push("❌ שירות זיהוי הדיבור לא מגיב בכלל. באנדרואיד זה כמעט תמיד אפליקציית Google: פותחים את חנות Play, מחפשים Google ומעדכנים (וגם שירותי Google Play). אחרי העדכון סוגרים את כרום לגמרי ופותחים מחדש."+(got.err?" ("+got.err+")":""))}}
 out.push(heVoice()?"✅ קול עברי מותקן להקראת התשובות":"⚠️ לא נמצא קול עברי מותקן - התשובות יוקראו אבל עלולות להישמע לא טבעיות");
 chatLog.push({me:false,text:"תוצאות בדיקה:\n"+out.join("\n")+"\n\nטיפ שעובד תמיד: לוחצים על שורת הכתיבה, משתמשים במיקרופון של המקלדת עצמה (Gboard) להקלדה קולית - ואז שליחה."});renderChat()}
 /* ===== VIEWS ===== */
@@ -730,4 +733,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.16.3 - hard 30s timeout on all Gemini calls; timeout behaves like 503 (retry -> chain -> clear message) -->
+<!-- v1.16.4 - remember dead device recognizer (ts_sr_dead); every voice entry routes straight to cloud recorder -->
