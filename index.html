@@ -446,7 +446,7 @@ function toggleVoice(){
 if(!voiceMode){
 listenRetries=0;voiceMode=true;if(synth)synth.cancel();
 if(useRecorder()){
-if(!geminiKey()){voiceMode=false;chatLog.push({me:false,text:SR?"זיהוי הדיבור של המכשיר לא מגיב כרגע. אפשר להקליט שאלות דרך הענן עם מפתח Gemini (ב-⚙️) - או פשוט להשתמש במיקרופון של המקלדת (Gboard) ואז שליחה.":"הדפדפן הזה לא תומך בזיהוי דיבור. עם מפתח Gemini (ב-⚙️) אפשר להקליט שאלות דרך הענן - או להשתמש במיקרופון של המקלדת."});renderChat();return}
+if(!geminiKey()){voiceMode=false;chatLog.push({me:false,text:"כדי לדבר איתי בדפדפן הזה צריך מפתח Gemini - התמלול של שאלות קוליות עובר דרך הענן. אם כבר הזנתם מפתח בדפדפן אחר, שימו לב: הוא נשמר שם בלבד. מדביקים אותו כאן: לוחצים על ⚙️ למעלה בצ'אט, מדביקים את המפתח בשדה ולוחצים שמירה - ואז 🎤 שוב. בלי מפתח אפשר להקליד (גם עם מיקרופון המקלדת) ואז שליחה."});renderChat();return}
 chatLog.push({me:false,text:"מצב הקלטה דרך הענן 🎧 לוחצים על 🎤, מדברים, ולוחצים שוב כשמסיימים - והשאלה נשלחת לבד."});renderChat();startRecorder();return}
 if(!SR){voiceMode=false;chatLog.push({me:false,text:"הדפדפן הזה עדיין לא תומך בשיחה קולית. באנדרואיד ובמחשב זה עובד בכרום, ובאייפון בספארי העדכני. בינתיים אפשר להקליד 😊"});renderChat();return}
 startListening();return}
@@ -717,4 +717,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.16.0 - recorder mode: MediaRecorder -> WAV -> Gemini transcription, auto-fallback from dead recognizer -->
+<!-- v1.16.1 - explicit key-required copy for voice transcription (per-browser key) -->
