@@ -532,9 +532,12 @@ var body=JSON.stringify({contents:[{role:"user",parts:[{text:"Transcribe the Heb
 var r=null,mi=0,got=false;
 for(mi=0;mi<GEMINI_MODELS.length&&!got;mi++){
 for(var att=0;att<3;att++){
-r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body});
-if(r.ok){got=true;break}
-if(r.status===503){if(att<2){var st5=$("voicestate");if(st5)st5.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
+var ctl=new AbortController();var tm=setTimeout(function(){ctl.abort()},30000);
+try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body,signal:ctl.signal})}
+catch(fe){r=null}
+clearTimeout(tm);
+if(r&&r.ok){got=true;break}
+if(!r||r.status===503){if(att<2){var st5=$("voicestate");if(st5)st5.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
 if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)break;
 var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}}
 if(!got){var eg=new Error(r?r.status+" unavailable":"503 unavailable");eg.status=r?r.status:503;throw eg}
@@ -680,9 +683,12 @@ var body=JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:conten
 var r=null,mi=0,got=false;
 for(mi=0;mi<GEMINI_MODELS.length&&!got;mi++){
 for(var att=0;att<3;att++){
-r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body});
-if(r.ok){got=true;break}
-if(r.status===503){if(att<2){var tp5=$("typing");if(tp5)tp5.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
+var ctl=new AbortController();var tm=setTimeout(function(){ctl.abort()},30000);
+try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body,signal:ctl.signal})}
+catch(fe){r=null}
+clearTimeout(tm);
+if(r&&r.ok){got=true;break}
+if(!r||r.status===503){if(att<2){var tp5=$("typing");if(tp5)tp5.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
 if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)break;
 var e=await r.json().catch(function(){return{}});var msg=(e.error&&e.error.message)||"";var err=new Error(r.status+" "+msg);err.status=r.status;throw err}}
 if(!got){var e2g=new Error((r?r.status:503)+" unavailable after retries");e2g.status=r?r.status:503;throw e2g}
@@ -724,4 +730,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.16.2 - 503 resilience: retry x3 with backoff + model chain walk on transcription and answers -->
+<!-- v1.16.3 - hard 30s timeout on all Gemini calls; timeout behaves like 503 (retry -> chain -> clear message) -->
