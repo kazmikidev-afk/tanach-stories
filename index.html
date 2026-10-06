@@ -69,6 +69,14 @@ a{color:var(--accent2)}
 .chatinput button.mic.speaking{background:#1e8449}
 @keyframes micpulse{0%{box-shadow:0 0 0 0 rgba(192,57,43,.45)}70%{box-shadow:0 0 0 14px rgba(192,57,43,0)}100%{box-shadow:0 0 0 0 rgba(192,57,43,0)}}
 #voicestate{font-size:.82rem;opacity:.78;padding:4px 12px 0;min-height:1.1em}
+.reading{background:rgba(107,79,187,.14);border-radius:8px;transition:background .3s}
+.qa{margin-top:10px;border-top:1px solid var(--line,#e5e0d8);padding-top:10px}
+.qarow{display:flex;gap:8px}
+.qarow input{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line,#e5e0d8);font-size:1rem;background:var(--bg,#fff);color:inherit}
+.qarow button{padding:10px 14px;border-radius:12px;border:0;background:var(--accent,#6b4fbb);color:#fff;font-size:1rem;cursor:pointer}
+.qarow button.mic{padding:10px 12px;font-size:1.1rem}
+.qarow button.mic.listening{background:#c0392b;animation:micpulse 1.1s infinite}
+#qaOut{margin-top:8px}
 .chatsettings{padding:8px 12px;border-bottom:1px solid var(--line,#e5e0d8);font-size:.8rem;color:var(--dim,#8a8577)}
 .chatsettings input{width:100%;margin-top:6px;padding:8px;border-radius:10px;border:1px solid var(--line,#e5e0d8);font-size:.85rem;background:var(--bg,#fff);color:inherit;direction:ltr;text-align:left}
 .chatsettings .row{display:flex;gap:6px;margin-top:6px}
@@ -423,10 +431,20 @@ const synth=window.speechSynthesis;
 let speaking=false,paused=false;
 function heVoice(){if(!synth)return null;const vs=synth.getVoices();return vs.find(v=>/^he/i.test(v.lang))||vs.find(v=>/hebrew|עברית/i.test(v.name))||null}
 if(synth)synth.onvoiceschanged=()=>{};
-function stopSpeak(){if(synth)synth.cancel();speaking=false;paused=false;updPlayer()}
-function speakStory(st){if(!synth){alert("הדפדפן הזה לא תומך בהקראה");return}stopSpeak();const parts=[st.title+"."].concat(st.body);if(st.lesson)parts.push("מה לומדים? "+st.lesson);(st.rashi||[]).forEach(r=>{parts.push("רשי אומר, על "+r.ref+": "+r.quote+" "+r.explain)});const v=heVoice();const rate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
-parts.forEach((t,i)=>{const u=new SpeechSynthesisUtterance(t);u.lang="he-IL";if(v)u.voice=v;u.rate=rate;u.onend=()=>{if(i===parts.length-1){speaking=false;updPlayer()}};synth.speak(u)});speaking=true;paused=false;updPlayer()}
-function updPlayer(){const b=$("playBtn");if(!b)return;b.textContent=speaking&&!paused?"⏸ השהה":"▶ הקראה";const st=$("pState");if(st)st.textContent=speaking?(paused?"מושהה":"מקריא..."):"";}
+var rSegs=[],rIdx=0,rActive=false,rPaused=false,rStory=null,curStory=null,rGen=0;
+function stopSpeak(){if(synth)synth.cancel();rActive=false;rPaused=false;updPlayer()}
+function buildSegs(st){var segs=[{t:st.title+".",el:null}];st.body.forEach(function(b,i){segs.push({t:b,el:"bpara"+i})});if(st.lesson)segs.push({t:"מה לומדים? "+st.lesson,el:"blesson"});(st.rashi||[]).forEach(function(r,i){segs.push({t:'רש"י אומר, על '+r.ref+": "+r.quote+" "+r.explain,el:"brashi"+i})});return segs}
+function hlSeg(el){document.querySelectorAll(".reading").forEach(function(x){x.classList.remove("reading")});if(el){var n=$(el);if(n){n.classList.add("reading");n.scrollIntoView({block:"center",behavior:"smooth"})}}}
+function speakSeg(i){if(!rActive||!synth)return;rIdx=i;var g=++rGen;updPlayer();hlSeg(rSegs[i].el);
+var v=heVoice();var rate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
+var u=new SpeechSynthesisUtterance(rSegs[i].t);u.lang="he-IL";if(v)u.voice=v;u.rate=rate;
+u.onend=function(){if(!rActive||g!==rGen)return;if(i+1<rSegs.length)speakSeg(i+1);else{rActive=false;rStory=null;updPlayer();hlSeg(null)}};
+u.onerror=function(){if(!rActive||g!==rGen)return;rActive=false;updPlayer()};
+synth.speak(u)}
+function startRead(st){if(!synth){alert("הדפדפן הזה לא תומך בהקראה");return}stopSpeak();rStory=st;rSegs=buildSegs(st);rActive=true;rPaused=false;rIdx=0;speakSeg(0)}
+function pauseRead(){if(!rActive)return;rPaused=true;rActive=false;if(synth)synth.cancel();updPlayer()}
+function resumeRead(){if(!rStory||!rSegs.length)return;rPaused=false;rActive=true;speakSeg(rIdx)}
+function updPlayer(){const b=$("playBtn");if(!b)return;b.textContent=rActive?"⏸ השהה":"▶ הקראה";const st=$("pState");if(!st)return;st.textContent=rActive?("מקריא... קטע "+(rIdx+1)+"/"+rSegs.length):(rPaused&&rSegs.length)?("מושהה בקטע "+(rIdx+1)+"/"+rSegs.length):""}
 function cycleRate(){let r=parseFloat(localStorage.getItem("tsr-rate")||"0.95");r=r>=1.2?0.8:r>=1?1.2:1;localStorage.setItem("tsr-rate",r);const b=$("rateBtn");if(b)b.textContent="מהירות "+r;return r}
 /* ===== VOICE CHAT ===== */
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -434,6 +452,8 @@ var voiceMode=false,rec=null,recActive=false,speakingAnswer=false,voiceFinal="";
 function updMic(){var b=$("micbtn");if(!b)return;
 b.classList.toggle("listening",recActive||recording);b.classList.toggle("speaking",speakingAnswer);
 b.textContent=transcribing?"\u{23F3}":speakingAnswer?"\u{1F50A}":(recording?"\u{23FA}\u{FE0F}":(recActive?"\u{1F399}\u{FE0F}":"\u{1F3A4}"));
+var qm=$("qaMic");if(qm){qm.classList.toggle("listening",recording);qm.textContent=transcribing?"\u{23F3}":recording?"\u{23FA}\u{FE0F}":"\u{1F3A4}"}
+var qs2=$("qaStatus");if(qs2&&recTarget==="story"){if(transcribing)qs2.textContent="מתמלל...";else if(recording)qs2.textContent="מקליט... דברו, ובסוף לוחצים שוב על 🎤";else if(qs2.textContent==="מתמלל..."||qs2.textContent.indexOf("מקליט")===0)qs2.textContent=""}
 var st=$("voicestate");if(!st)return;
 if(transcribing)st.textContent="מתמלל..."
 else if(recording)st.textContent="מקליט... דברו, ובסוף לוחצים שוב על 🎤"
@@ -493,7 +513,7 @@ updMic()}
 },10000);
 updMic()}
 function sleepMs(ms){return new Promise(function(r){setTimeout(r,ms)})}
-var mediaRec=null,recChunks=[],recStream=null,recording=false,transcribing=false,srDead=false,discardRec=false,recTimer=null;
+var mediaRec=null,recChunks=[],recStream=null,recording=false,transcribing=false,srDead=false,discardRec=false,recTimer=null,recTarget="chat";
 function geminiKey(){return localStorage.getItem("ts_gemini_key")}
 function recorderSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
 function srDeadStored(){return localStorage.getItem("ts_sr_dead")==="1"}
@@ -557,7 +577,7 @@ try{
 var b64=await blobToWavB64(blob);
 var tr=await transcribeAudio(b64);
 transcribing=false;updMic();
-if(tr){var inp=$("chatin");if(inp)inp.value=tr;chatSend()}
+if(tr){if(recTarget==="story"){recTarget="chat";var qi2=$("qaIn");if(qi2)qi2.value=tr;storyQuestion(tr)}else{var inp=$("chatin");if(inp)inp.value=tr;chatSend()}}
 else if(voiceMode){chatLog.push({me:false,text:"לא זיהיתי מילים בהקלטה - לוחצים על 🎤 ומנסים שוב."});renderChat()}}
 catch(e){transcribing=false;updMic();
 var st=e.status||0;var msg;
@@ -578,6 +598,50 @@ var u=new SpeechSynthesisUtterance(clean);u.lang="he-IL";if(v)u.voice=v;u.rate=r
 u.onend=function(){speakingAnswer=false;updMic();if(voiceMode&&!useRecorder())setTimeout(function(){if(voiceMode)startListening()},450)};
 u.onerror=function(){speakingAnswer=false;updMic();if(voiceMode&&!useRecorder())setTimeout(function(){if(voiceMode)startListening()},450)};
 synth.speak(u);updMic()}
+async function geminiAsk(key,bodyObj,statusEl){
+var body=JSON.stringify(bodyObj);var r=null,mi=0,got=false;
+for(mi=0;mi<GEMINI_MODELS.length&&!got;mi++){
+for(var att=0;att<3;att++){
+var ctl=new AbortController();var tm=setTimeout(function(){ctl.abort()},30000);
+try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body,signal:ctl.signal})}
+catch(fe){r=null}
+clearTimeout(tm);
+if(r&&r.ok){got=true;break}
+if(!r||r.status===503){if(att<2){if(statusEl)statusEl.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
+if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)break;
+var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}}
+if(!got){var eg=new Error((r?r.status:503)+" unavailable");eg.status=r?r.status:503;throw eg}
+var d=await r.json();
+return ((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("").trim()}
+function resumeBtnHtml(){return '<div style="margin-top:8px"><button class="main" onclick="resumeRead()">▶ המשך בסיפור</button></div>'}
+function speakQA(text){if(!synth)return;
+var clean=text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/gu,"").replace(/\*/g,"");
+var v=heVoice();var rate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
+var u=new SpeechSynthesisUtterance(clean);u.lang="he-IL";if(v)u.voice=v;u.rate=rate;synth.speak(u)}
+async function storyQuestion(q){
+var s=curStory;if(!s)return;
+var qs=$("qaStatus"),qo=$("qaOut");
+if(!geminiKey()){
+var f=composeFree(q);
+if(qs)qs.textContent="";
+if(qo)qo.innerHTML='<div class="msg me"><b>'+esc(q)+'</b></div><div class="msg bot">'+esc(f.text)+'</div>'+resumeBtnHtml();
+speakQA(f.text);return}
+if(qs)qs.textContent="חושב...";
+if(qo)qo.innerHTML='<div class="msg me"><b>'+esc(q)+'</b></div>';
+var ctx="הסיפור: "+s.title+" ("+s.book+" "+s.chapters+")\n"+s.body.join("\n")+(s.lesson?"\nהלקח: "+s.lesson:"")+((s.rashi&&s.rashi.length)?'\nרש"י: '+s.rashi.map(function(r){return 'על '+r.ref+": "+r.quote+" - "+r.explain}).join("\n"):"");
+var sys='אתה מספר סיפורי תנ"ך לילדים בגילאי 5-13, באמצע הקראה של סיפור. ענה על השאלה בעברית פשוטה, חמה וקצרה (עד 4 משפטים), רק על בסיס טקסט הסיפור המצורף. אם התשובה לא מופיעה בסיפור, אמר שזה לא כתוב בסיפור הזה והצע לשאול שאלה אחרת על הסיפור. אל תמציא פרטים ואל תוסיף מקורות חיצוניים.';
+try{
+var ans=await geminiAsk(geminiKey(),{system_instruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:"טקסט הסיפור:\n"+ctx+"\n\nהשאלה: "+q}]}],generationConfig:{temperature:0.4,maxOutputTokens:350}},qs);
+if(!ans)throw new Error("empty");
+if(qs)qs.textContent="";
+if(qo)qo.innerHTML='<div class="msg me"><b>'+esc(q)+'</b></div><div class="msg bot">'+esc(ans)+'</div>'+resumeBtnHtml();
+speakQA(ans)}
+catch(e){var st=e.status||0;var msg;
+if(st===400||st===401||st===403)msg="מפתח ה-Gemini לא תקין או פג תוקף - אפשר לעדכן ב-⚙️ בצ'אט.";
+else if(st===429)msg="מכסת החינם נגמרה לדקה או ליום - נסו שוב בעוד דקה, או הקלידו בצ'אט הראשי.";
+else if(st===503)msg="Gemini בעומס זמני גם אחרי כמה נסיונות - נסו שוב בעוד כמה דקות.";
+else msg="משהו השתבש ("+(e.message||"שגיאת רשת")+"). נסו שוב.";
+if(qs)qs.textContent=msg}}
 async function runMicDiag(){
 var s=$("chatsettings");if(s)s.hidden=true;
 chatLog.push({me:false,text:"מריץ בדיקת מיקרופון... דברו כמה מילים ברור במשך כ-6 שניות 🎤"});renderChat();
@@ -628,17 +692,23 @@ app.innerHTML=h;window.scrollTo(0,0)}
 function viewStory(uid,sid){const u=UNITS.find(x=>x.id===uid);const s=u&&u.stories.find(x=>x.id===sid);if(!s)return viewHome();stopSpeak();
 let h='<button class="back" onclick="viewUnit('+uid+')">→ חזרה ליחידה</button><div class="card story"><h2>'+esc(s.title)+'</h2><div class="src">'+esc(s.book)+', פרקים '+esc(s.chapters)+(s.holiday?' · 🗓 '+esc(s.holiday):'')+' · '+s.ages.map(a=>'<span class="agetag">'+a+'+</span>').join(" ")+'</div>';
 if(s.note)h+='<div class="note">⚠️ '+esc(s.note)+'</div>';
-s.body.forEach(p=>{h+='<p>'+esc(p)+'</p>'});
-if(s.lesson)h+='<div class="lesson"><b>💡 מה לומדים?</b><div style="margin-top:4px">'+esc(s.lesson)+'</div></div>';
-(s.rashi||[]).forEach(r=>{h+='<div class="rashic"><b>📜 רש״י - '+esc(r.ref)+'</b><div class="rq">'+esc(r.quote)+'</div><div>'+esc(r.explain)+'</div></div>'});
+s.body.forEach((p,i)=>{h+='<p id="bpara'+i+'">'+esc(p)+'</p>'});
+if(s.lesson)h+='<div class="lesson" id="blesson"><b>💡 מה לומדים?</b><div style="margin-top:4px">'+esc(s.lesson)+'</div></div>';
+(s.rashi||[]).forEach((r,i)=>{h+='<div class="rashic" id="brashi'+i+'"><b>📜 רש״י - '+esc(r.ref)+'</b><div class="rq">'+esc(r.quote)+'</div><div>'+esc(r.explain)+'</div></div>'});
 h+='<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="iconbtn" style="padding:0 16px;font-size:.95rem" onclick="toggleRead(\''+s.id+'\')">'+(read[s.id]?"✅ נקרא!":"סמן כנקרא")+'</button>';
 const idx=u.stories.indexOf(s);if(idx<u.stories.length-1)h+='<button class="iconbtn" style="padding:0 16px;font-size:.95rem" onclick="goStory('+uid+',\''+u.stories[idx+1].id+'\')">הסיפור הבא ←</button>';
 h+='</div></div>';
-h+='<div class="player"><button class="main" id="playBtn">▶ הקראה</button><button id="stopBtn">⏹</button><button id="rateBtn">מהירות '+(localStorage.getItem("tsr-rate")||"0.95")+'</button><div class="st" id="pState"></div></div>';
+h+='<div class="player"><button class="main" id="playBtn">▶ הקראה</button><button id="askBtn" title="שאלה תוך כדי ההקראה">🎤 שאלה</button><button id="stopBtn">⏹</button><button id="rateBtn">מהירות '+(localStorage.getItem("tsr-rate")||"0.95")+'</button><div class="st" id="pState"></div></div>';
+h+='<div class="qa" id="qaBar" hidden><div class="qarow"><button id="qaMic" class="mic" title="שאלה בקול">🎤</button><input id="qaIn" placeholder="או הקלידו שאלה על הסיפור..."><button id="qaSend">שאלו</button></div><div class="st" id="qaStatus"></div><div id="qaOut"></div></div>';
 app.innerHTML=h;window.scrollTo(0,0);updPlayer();
-$("playBtn").onclick=()=>{if(!speaking)speakStory(s);else if(!paused){synth.pause();paused=true;updPlayer()}else{synth.resume();paused=false;updPlayer()}};
-$("stopBtn").onclick=stopSpeak;
-$("rateBtn").onclick=()=>{const r=cycleRate();if(speaking){speakStory(s)}}}
+curStory=s;
+$("playBtn").onclick=()=>{if(rActive){pauseRead()}else if(rPaused&&rStory===s){resumeRead()}else{startRead(s)}};
+$("stopBtn").onclick=()=>{stopSpeak();rStory=null;hlSeg(null)};
+$("rateBtn").onclick=()=>{const r=cycleRate();if(rActive){rGen++;synth.cancel();speakSeg(rIdx)}};
+$("askBtn").onclick=()=>{pauseRead();$("qaBar").hidden=false;recTarget="story";var qi=$("qaIn");if(qi)qi.focus();$("qaBar").scrollIntoView({block:"nearest",behavior:"smooth"})};
+$("qaMic").onclick=()=>{if(recording){stopRecorder()}else{recTarget="story";startRecorder()}};
+$("qaSend").onclick=()=>{var q=($("qaIn").value||"").trim();if(q){$("qaIn").value="";storyQuestion(q)}};
+$("qaIn").onkeydown=e=>{if(e.key==="Enter"){var q=(e.target.value||"").trim();if(q){e.target.value="";storyQuestion(q)}}}}
 function toggleRead(sid){read[sid]=!read[sid];saveRead();const m=location.hash.match(/#u(\d+)\/(.+)/);if(m)viewStory(+m[1],m[2])}
 function goUnit(uid){location.hash="#u"+uid}
 function goStory(uid,sid){location.hash="#u"+uid+"/"+sid}
@@ -733,4 +803,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.16.4 - remember dead device recognizer (ts_sr_dead); every voice entry routes straight to cloud recorder -->
+<!-- v1.17.0 - phase 4: interactive read-aloud - segmented TTS with progress, interrupt with a question, story-grounded answer, resume -->
