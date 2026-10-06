@@ -588,36 +588,24 @@ try{mediaRec.start()}catch(e4){chatLog.push({me:false,text:"ההקלטה לא ה
 recording=true;startRecMeter(recStream);
 clearTimeout(recTimer);recTimer=setTimeout(function(){if(recording)stopRecorder()},30000);
 updMic()}
-var recCtx=null,recAnalyser=null,recMeterRaf=0,recPeak=0;
-function startRecMeter(stream){recPeak=0;try{var AC=window.AudioContext||window.webkitAudioContext;recCtx=new AC();var src=recCtx.createMediaStreamSource(stream);recAnalyser=recCtx.createAnalyser();recAnalyser.fftSize=2048;src.connect(recAnalyser);var buf=new Float32Array(recAnalyser.fftSize);(function loop(){if(!recording)return;recAnalyser.getFloatTimeDomainData(buf);var s=0;for(var i=0;i<buf.length;i++)s+=buf[i]*buf[i];var rms=Math.sqrt(s/buf.length);if(rms>recPeak)recPeak=rms;var f=$("recMeterFill");if(f)f.style.width=Math.min(100,Math.round(rms*300))+"%";recMeterRaf=requestAnimationFrame(loop)})()}catch(e){}}
+var recCtx=null,recAnalyser=null,recMeterRaf=0,recPeak=0,recMeterRan=false;
+function startRecMeter(stream){recPeak=0;recMeterRan=false;try{var AC=window.AudioContext||window.webkitAudioContext;recCtx=new AC();var src=recCtx.createMediaStreamSource(stream);recAnalyser=recCtx.createAnalyser();recAnalyser.fftSize=2048;src.connect(recAnalyser);recMeterRan=true;var buf=new Float32Array(recAnalyser.fftSize);(function loop(){if(!recording)return;recAnalyser.getFloatTimeDomainData(buf);var s=0;for(var i=0;i<buf.length;i++)s+=buf[i]*buf[i];var rms=Math.sqrt(s/buf.length);if(rms>recPeak)recPeak=rms;var f=$("recMeterFill");if(f)f.style.width=Math.min(100,Math.round(rms*300))+"%";recMeterRaf=requestAnimationFrame(loop)})()}catch(e){}}
 function stopRecMeter(){cancelAnimationFrame(recMeterRaf);try{if(recCtx)recCtx.close()}catch(e){}recCtx=null;recAnalyser=null}
 function stopRecorder(){clearTimeout(recTimer);stopRecMeter();if(mediaRec&&mediaRec.state!=="inactive"){try{mediaRec.stop()}catch(e){}}
 if(recStream){recStream.getTracks().forEach(function(t){t.stop()});recStream=null}
 recording=false;updMic()}
-function blobToWavB64(blob){return new Promise(function(res,rej){
+function blobToB64(blob){return new Promise(function(res,rej){
 var fr=new FileReader();
-fr.onload=function(){try{
-var AC=window.AudioContext||window.webkitAudioContext;var ac=new AC();
-ac.decodeAudioData(fr.result,function(buf){
-try{
-var sr=buf.sampleRate;var n=Math.min(buf.length,sr*60);var ch=buf.getChannelData(0);
-var pcm=new Int16Array(n);for(var i=0;i<n;i++){var v=Math.max(-1,Math.min(1,ch[i]));pcm[i]=v<0?v*0x8000:v*0x7FFF}
-var sum=0;for(var ri=0;ri<n;ri++){var rv=ch[ri];sum+=rv*rv}var rms=Math.sqrt(sum/(n||1));
-var ab=new ArrayBuffer(44+n*2);var dv=new DataView(ab);
-function ws(o,st){for(var j=0;j<st.length;j++)dv.setUint8(o+j,st.charCodeAt(j))}
-ws(0,"RIFF");dv.setUint32(4,36+n*2,true);ws(8,"WAVE");ws(12,"fmt ");dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,sr,true);dv.setUint32(28,sr*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);ws(36,"data");dv.setUint32(40,n*2,true);
-new Int16Array(ab,44).set(pcm);
-var bytes=new Uint8Array(ab);var bin="";for(var k=0;k<bytes.length;k+=8192){bin+=String.fromCharCode.apply(null,bytes.subarray(k,k+8192))}
-if(ac.close)ac.close();res({b64:btoa(bin),rms:rms})}catch(ex){rej(ex)}},function(err){rej(new Error("decode-failed"))})}catch(ex0){rej(ex0)}};
+fr.onload=function(){try{var b=new Uint8Array(fr.result);var bin="";for(var k=0;k<b.length;k+=8192){bin+=String.fromCharCode.apply(null,b.subarray(k,k+8192))}res(btoa(bin))}catch(ex){rej(ex)}};
 fr.onerror=function(){rej(new Error("read-failed"))};fr.readAsArrayBuffer(blob)})}
-async function transcribeAudio(b64){
+async function transcribeAudio(b64,mime){
 var key=geminiKey();
-var body=JSON.stringify({contents:[{role:"user",parts:[{text:"Transcribe the Hebrew speech in this audio recording verbatim, in Hebrew letters. Output ONLY the transcript text - no translation, no commentary, no extra words. If no speech is audible, output nothing."},{inlineData:{mimeType:"audio/wav",data:b64}}]}],generationConfig:{temperature:0,maxOutputTokens:300}});
+var body=JSON.stringify({contents:[{role:"user",parts:[{text:"Transcribe the Hebrew speech in this audio recording verbatim, in Hebrew letters. Output ONLY the transcript text - no translation, no commentary, no extra words. If no speech is audible, output nothing."},{inlineData:{mimeType:mime||"audio/webm",data:b64}}]}],generationConfig:{temperature:0,maxOutputTokens:300}});
 var r=null,mi=0,got=false;
-for(mi=0;mi<GEMINI_MODELS.length&&!got;mi++){
+for(mi=0;mi<GEMINI_FAST.length&&!got;mi++){
 for(var att=0;att<3;att++){
 var ctl=new AbortController();var tm=setTimeout(function(){ctl.abort()},30000);
-try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body,signal:ctl.signal})}
+try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_FAST[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body,signal:ctl.signal})}
 catch(fe){r=null}
 clearTimeout(tm);
 if(r&&r.ok){got=true;break}
@@ -633,21 +621,20 @@ if(discardRec){discardRec=false;recChunks=[];return}
 var chunks=recChunks;recChunks=[];
 if(!chunks.length)return;
 var blob=new Blob(chunks,{type:(mediaRec&&mediaRec.mimeType)||"audio/webm"});
-window.__recDiag={mime:(mediaRec&&mediaRec.mimeType)||"default",size:blob.size,peak:Math.round(recPeak*1000)/1000};
+var mime=((mediaRec&&mediaRec.mimeType)||"audio/webm").split(";")[0];
+window.__recDiag={mime:mime,size:blob.size,peak:Math.round(recPeak*1000)/1000};
 if(blob.size<800){recSay("לא נקלט שום קול - המיקרופון לא העביר דבר. בודקים שאין אפליקציה אחרת שתופסת את המיקרופון, ומנסים שוב.");return}
 transcribing=true;updMic();
 try{
-var conv=await blobToWavB64(blob);
-window.__recDiag.rms=Math.round(conv.rms*10000)/10000;
-if(conv.rms<0.002){transcribing=false;updMic();recSay("ההקלטה שקטה לגמרי - המיקרופון לא קלט קול בפועל (רמת השמע אפסית). בודקים שהמיקרופון לא מושתק ומתקרבים למכשיר, ומנסים שוב.");return}
-var tr=await transcribeAudio(conv.b64);
+if(recMeterRan&&recPeak<0.01){transcribing=false;updMic();recSay("ההקלטה שקטה לגמרי - המיקרופון לא קלט קול בפועל (רמת השמע אפסית). בודקים שהמיקרופון לא מושתק ומתקרבים למכשיר, ומנסים שוב.");return}
+var b64=await blobToB64(blob);
+var tr=await transcribeAudio(b64,mime);
 transcribing=false;updMic();
 if(tr){if(recTarget==="story"){recTarget="chat";var qi2=$("qaIn");if(qi2)qi2.value=tr;storyQuestion(tr)}else{var inp=$("chatin");if(inp)inp.value=tr;chatSend()}}
 else recSay("ההקלטה התקבלה והשמע תקין, אבל לא זוהו מילים ברורות - מנסים שוב, לאט וקרוב למיקרופון.")}
 catch(e){transcribing=false;updMic();
 var st=e.status||0;var msg;
-if(e.message==="decode-failed")msg="קובץ ההקלטה לא נקרא במכשיר הזה (פורמט לא נתמך) - מנסים שוב; אם נמשך, מקלידים עם מיקרופון המקלדת.";
-else if(st===400||st===401||st===403)msg="מפתח ה-Gemini לא תקין או פג תוקף - אפשר לעדכן ב-⚙️.";
+if(st===400||st===401||st===403)msg="מפתח ה-Gemini לא תקין או פג תוקף - אפשר לעדכן ב-⚙️.";
 else if(st===429)msg="מכסת התמלול לדקה או ליום נגמרה. נסו שוב בעוד דקה, או הקלידו (אפשר עם מיקרופון המקלדת).";
 else if(st===404)msg="מודל התמלול הוחלף או אינו זמין כרגע - נסו שוב בעוד כמה דקות.";
 else if(st===503)msg="שירות התמלול בעומס זמני גם אחרי כמה נסיונות - נסו שוב בעוד דקה-שתיים, או הקלידו (אפשר עם מיקרופון המקלדת).";
@@ -665,21 +652,27 @@ var u=new SpeechSynthesisUtterance(clean);u.lang="he-IL";if(v)u.voice=v;u.rate=r
 u.onend=function(){speakingAnswer=false;updMic();if(voiceMode&&!useRecorder())setTimeout(function(){if(voiceMode)startListening()},450)};
 u.onerror=function(){speakingAnswer=false;updMic();if(voiceMode&&!useRecorder())setTimeout(function(){if(voiceMode)startListening()},450)};
 synth.speak(u);updMic()}
-async function geminiAsk(key,bodyObj,statusEl){
-var body=JSON.stringify(bodyObj);var r=null,mi=0,got=false;
-for(mi=0;mi<GEMINI_MODELS.length&&!got;mi++){
+async function geminiAskStream(key,bodyObj,statusEl,onToken){
+var body=JSON.stringify(bodyObj);var lst=503;
+for(var mi=0;mi<GEMINI_FAST.length;mi++){
 for(var att=0;att<3;att++){
-var ctl=new AbortController();var tm=setTimeout(function(){ctl.abort()},30000);
-try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body,signal:ctl.signal})}
+var ctl=new AbortController();var tm=setTimeout(function(){ctl.abort()},30000);var r=null;
+try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_FAST[mi]+":streamGenerateContent?alt=sse&key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body,signal:ctl.signal})}
 catch(fe){r=null}
-clearTimeout(tm);
-if(r&&r.ok){got=true;break}
-if(!r||r.status===503){if(att<2){if(statusEl)statusEl.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
+if(!r){clearTimeout(tm);if(att<2){if(statusEl)statusEl.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
+if(!r.ok){clearTimeout(tm);lst=r.status;
+if(r.status===503){if(att<2){if(statusEl)statusEl.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
 if(r.status===404||r.status===429)break;
-var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}}
-if(!got){var eg=new Error("מודלי ה-AI לא זמינים כרגע");eg.status=r?r.status:503;throw eg}
-var d=await r.json();
-return ((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("").trim()}
+var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}
+clearTimeout(tm);
+var full="";try{var rd=r.body.getReader();var dec=new TextDecoder();var buf="";
+while(true){var st=await rd.read();if(st.done)break;buf+=dec.decode(st.value,{stream:true});
+var lines=buf.split("\n");buf=lines.pop();
+for(var li=0;li<lines.length;li++){var ln=lines[li].trim();if(ln.indexOf("data:")!==0)continue;var js=ln.slice(5).trim();if(!js||js==="[DONE]")continue;
+try{var d=JSON.parse(js);var t=((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("");if(t){full+=t;if(onToken)onToken(full)}}catch(pe){}}}}catch(se){}
+if(full)return full;
+break}}
+var eg=new Error("מודלי ה-AI לא זמינים כרגע");eg.status=lst;throw eg}
 function resumeBtnHtml(){return '<div style="margin-top:8px"><button class="main" onclick="resumeRead()">▶ המשך בסיפור</button></div>'}
 function speakQA(text){if(!synth)return;
 var clean=text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/gu,"").replace(/\*/g,"");
@@ -693,12 +686,13 @@ var f=composeFree(q);
 if(qs)qs.textContent="";
 if(qo)qo.innerHTML='<div class="msg me"><b>'+esc(q)+'</b></div><div class="msg bot">'+esc(f.text)+'</div>'+resumeBtnHtml();
 speakQA(f.text);return}
-if(qs)qs.textContent="חושב...";
-if(qo)qo.innerHTML='<div class="msg me"><b>'+esc(q)+'</b></div>';
+if(qs)qs.textContent="עונה...";
+if(qo)qo.innerHTML='<div class="msg me"><b>'+esc(q)+'</b></div><div class="msg bot" id="qaAns"></div>';
 var ctx="הסיפור: "+s.title+" ("+s.book+" "+s.chapters+")\n"+s.body.join("\n")+(s.lesson?"\nהלקח: "+s.lesson:"")+((s.rashi&&s.rashi.length)?'\nרש"י: '+s.rashi.map(function(r){return 'על '+r.ref+": "+r.quote+" - "+r.explain}).join("\n"):"");
-var sys='אתה מספר סיפורי תנ"ך לילדים בגילאי 5-13, באמצע הקראה של סיפור. ענה על השאלה בעברית פשוטה, חמה וקצרה (עד 4 משפטים), רק על בסיס טקסט הסיפור המצורף. אם התשובה לא מופיעה בסיפור, אמר שזה לא כתוב בסיפור הזה והצע לשאול שאלה אחרת על הסיפור. אל תמציא פרטים ואל תוסיף מקורות חיצוניים.';
+if(rStory===s&&rSegs[rIdx])ctx+="\nהקטע שבו עצרה ההקראה כשנשאלה השאלה: "+rSegs[rIdx].t;
+var sys='אתה מספר סיפורי תנ"ך לילדים בגילאי 5-13, באמצע הקראה של סיפור. ענה בעברית פשוטה, חמה וקצרה (עד 4 משפטים). קודם חפש את התשובה בטקסט הסיפור המצורף - אם היא שם, ענה ממנו. אם התשובה לא מופיעה בסיפור אבל אתה יודע אותה בוודאות מהתנ"ך - פתח ב"זה לא כתוב בסיפור הזה, אבל..." וענה מהידע שלך על התנ"ך, וציין שזה מהתנ"ך ולא מהסיפור. אם אינך יודע בוודאות - אמר שאתה לא יודע. לעולם אל תנחש ואל תמציא פרטים.';
 try{
-var ans=await geminiAsk(geminiKey(),{system_instruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:"טקסט הסיפור:\n"+ctx+"\n\nהשאלה: "+q}]}],generationConfig:{temperature:0.4,maxOutputTokens:350}},qs);
+var ans=await geminiAskStream(geminiKey(),{system_instruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:"טקסט הסיפור:\n"+ctx+"\n\nהשאלה: "+q}]}],generationConfig:{temperature:0.4,maxOutputTokens:350}},qs,function(t){var el=$("qaAns");if(el)el.textContent=t;});
 if(!ans)throw new Error("empty");
 if(qs)qs.textContent="";
 if(qo)qo.innerHTML='<div class="msg me"><b>'+esc(q)+'</b></div><div class="msg bot">'+esc(ans)+'</div>'+resumeBtnHtml();
@@ -816,9 +810,10 @@ if(s.rashi&&s.rashi.length)t+='\n\n📜 ורש"י על '+s.rashi[0].ref+" אומ
 if(m.length>1)t+="\n\nקשור גם: "+m.slice(1,3).map(function(x){return x[1].title}).join(", ");
 return{text:t,refs:refsOf(m.slice(0,3))}}
 var GEMINI_MODELS=["gemini-3.8-flash","gemini-3.5-flash-lite","gemini-3.1-flash-lite","gemini-2.5-flash-lite"];
+var GEMINI_FAST=["gemini-3.5-flash-lite","gemini-3.8-flash","gemini-3.1-flash-lite","gemini-2.5-flash-lite"];
 async function askLLM(q){var key=activeKey(),prov=provider();var m=searchStories(q).slice(0,3);
 var ctx=m.map(function(x){var u=x[0],s=x[1];return "יחידה "+u.id+" ("+u.title+"), סיפור מס' "+s.n+": "+s.title+" ("+s.book+" "+s.chapters+")\n"+s.body.join("\n")+(s.lesson?"\nלקח: "+s.lesson:"")+((s.rashi&&s.rashi.length)?'\nרש"י על '+s.rashi[0].ref+": "+s.rashi[0].quote+" - "+s.rashi[0].explain:"")}).join("\n\n---\n\n");
-var sys='אתה ספרן ידידותי באפליקציית סיפורי תנ"ך למשפחה עם ילדים בגילאי 5-13. ענה בעברית פשוטה, חמה וקצרה (עד 5 משפטים). השתמש רק בקטעי הסיפורים המצורפים - אל תמציא פרטים. אם התשובה לא נמצאת בקטעים, אמר שאין על זה סיפור באפליקציה והצע את הסיפור הכי קרוב. בסוף כל תשובה הוסף שורה: "המקור: ספר ופרקים, סיפור מס׳ X".';
+var sys='אתה ספרן ידידותי באפליקציית סיפורי תנ"ך למשפחה עם ילדים בגילאי 5-13. ענה בעברית פשוטה, חמה וקצרה (עד 5 משפטים). קודם חפש את התשובה בקטעי הסיפורים המצורפים - אם היא שם, ענה מהם ובסוף הוסף שורה: "המקור: ספר ופרקים, סיפור מס׳ X". אם התשובה לא מופיעה בקטעים אבל אתה יודע אותה בוודאות מהתנ"ך - פתח ב"זה לא מופיע בסיפורים באפליקציה, אבל בתנ"ך..." וענה, וציין את הספר והפרקים. אם אינך יודע בוודאות - אמר שאתה לא יודע. לעולם אל תנחש ואל תמציא פרטים.';
 if(prov==="gemini"){
 var contents=chatLog.slice(-6).map(function(mm){return{role:mm.me?"user":"model",parts:[{text:mm.text}]}});
 contents.push({role:"user",parts:[{text:"קטעי סיפורים מהאפליקציה:\n"+ctx+"\n\nהשאלה: "+q}]});
@@ -876,4 +871,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.17.2 - model chain: only live models (2.0-flash retired), 404 always walks + clean Hebrew terminal error; recorder: MIME probing, live volume meter, silence/RMS failure diagnostics, story-path error visibility -->
+<!-- v1.17.3 - speed: direct compressed blob upload (no WAV), fast-model chain for transcription+story QA, SSE streaming answers, staged status; story QA + chat: answer from story first, labeled Tanach-knowledge fallback when not in story, never guess -->
