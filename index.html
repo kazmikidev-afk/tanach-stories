@@ -490,6 +490,7 @@ else{voiceMode=false;chatLog.push({me:false,text:micTroubleMsg()});renderChat()}
 updMic()}
 },10000);
 updMic()}
+function sleepMs(ms){return new Promise(function(r){setTimeout(r,ms)})}
 var mediaRec=null,recChunks=[],recStream=null,recording=false,transcribing=false,srDead=false,discardRec=false,recTimer=null;
 function geminiKey(){return localStorage.getItem("ts_gemini_key")}
 function recorderSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
@@ -528,13 +529,15 @@ fr.onerror=function(){rej(new Error("read-failed"))};fr.readAsArrayBuffer(blob)}
 async function transcribeAudio(b64){
 var key=geminiKey();
 var body=JSON.stringify({contents:[{role:"user",parts:[{text:"Transcribe the Hebrew speech in this audio recording verbatim, in Hebrew letters. Output ONLY the transcript text - no translation, no commentary, no extra words. If no speech is audible, output nothing."},{inlineData:{mimeType:"audio/wav",data:b64}}]}],generationConfig:{temperature:0,maxOutputTokens:300}});
-var r=null,mi=0;
-for(mi=0;mi<GEMINI_MODELS.length;mi++){
+var r=null,mi=0,got=false;
+for(mi=0;mi<GEMINI_MODELS.length&&!got;mi++){
+for(var att=0;att<3;att++){
 r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body});
-if(r.ok)break;
-if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)continue;
-var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}
-if(!r.ok){var eg=new Error("404 model unavailable");eg.status=404;throw eg}
+if(r.ok){got=true;break}
+if(r.status===503){if(att<2){var st5=$("voicestate");if(st5)st5.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
+if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)break;
+var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}}
+if(!got){var eg=new Error(r?r.status+" unavailable":"503 unavailable");eg.status=r?r.status:503;throw eg}
 var d=await r.json();
 return ((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("").trim()}
 async function onRecordingDone(){
@@ -554,6 +557,7 @@ catch(e){transcribing=false;updMic();
 var st=e.status||0;var msg;
 if(st===400||st===401||st===403)msg="מפתח ה-Gemini לא תקין או פג תוקף - אפשר לעדכן ב-⚙️.";
 else if(st===429)msg="מכסת התמלול לדקה או ליום נגמרה. נסו שוב בעוד דקה, או הקלידו (אפשר עם מיקרופון המקלדת).";
+else if(st===503)msg="שירות התמלול בעומס זמני גם אחרי כמה נסיונות - נסו שוב בעוד דקה-שתיים, או הקלידו (אפשר עם מיקרופון המקלדת).";
 else msg="התמלול נכשל ("+(e.message||"שגיאת רשת")+"). בודקים אינטרנט ומנסים שוב.";
 chatLog.push({me:false,text:msg});renderChat()}}
 var heVoiceWarned=false;
@@ -673,13 +677,15 @@ if(prov==="gemini"){
 var contents=chatLog.slice(-6).map(function(mm){return{role:mm.me?"user":"model",parts:[{text:mm.text}]}});
 contents.push({role:"user",parts:[{text:"קטעי סיפורים מהאפליקציה:\n"+ctx+"\n\nהשאלה: "+q}]});
 var body=JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:contents,generationConfig:{temperature:0.4,maxOutputTokens:500}});
-var r=null,mi=0;
-for(mi=0;mi<GEMINI_MODELS.length;mi++){
+var r=null,mi=0,got=false;
+for(mi=0;mi<GEMINI_MODELS.length&&!got;mi++){
+for(var att=0;att<3;att++){
 r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body});
-if(r.ok)break;
-if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)continue;
-var e=await r.json().catch(function(){return{}});var msg=(e.error&&e.error.message)||"";var err=new Error(r.status+" "+msg);err.status=r.status;throw err}
-if(!r.ok){var e2g=await r.json().catch(function(){return{}});var errg=new Error("404 "+((e2g.error&&e2g.error.message)||"model unavailable"));errg.status=404;throw errg}
+if(r.ok){got=true;break}
+if(r.status===503){if(att<2){var tp5=$("typing");if(tp5)tp5.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
+if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)break;
+var e=await r.json().catch(function(){return{}});var msg=(e.error&&e.error.message)||"";var err=new Error(r.status+" "+msg);err.status=r.status;throw err}}
+if(!got){var e2g=new Error((r?r.status:503)+" unavailable after retries");e2g.status=r?r.status:503;throw e2g}
 var d=await r.json();var txt=((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("");
 if(!txt)throw new Error("empty");
 return{text:txt,refs:refsOf(m)}}
@@ -699,6 +705,7 @@ chatLog.push({me:false,text:ans.text,refs:ans.refs})}
 catch(e){var st=e.status||0;var msg;
 if(st===400||st===401||st===403)msg="המפתח לא תקין או פג תוקף. אפשר לעדכן אותו למעלה בלחצן על ⚙️ - או למחוק אותו ולהשתמש בחיפוש החכם החינמי.";
 else if(st===429)msg="חרגתם ממכסת החינם לדקה או ליום. נסו שוב בעוד דקה - או עברו בינתיים לחיפוש החכם (מוחקים את המפתח ב-⚙️).";
+else if(st===503)msg="שירות ה-AI בעומס זמני גם אחרי כמה נסיונות. נסו שוב בעוד דקה-שתיים - או הקלידו את השאלה והחיפוש החכם יענה גם בלי השירות.";
 else msg="משהו השתבש בשיחה ("+(e.message||"שגיאת רשת")+"). נסו שוב, או בדקו את החיבור לאינטרנט.";
 chatLog.push({me:false,text:msg})}
 var t=$("typing");if(t)t.remove();renderChat();if(chatLog.length)maybeSpeakAnswer(chatLog[chatLog.length-1].text)}
@@ -717,4 +724,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.16.1 - explicit key-required copy for voice transcription (per-browser key) -->
+<!-- v1.16.2 - 503 resilience: retry x3 with backoff + model chain walk on transcription and answers -->
