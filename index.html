@@ -432,18 +432,27 @@ function cycleRate(){let r=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 var voiceMode=false,rec=null,recActive=false,speakingAnswer=false,voiceFinal="";
 function updMic(){var b=$("micbtn");if(!b)return;
-b.classList.toggle("listening",recActive);b.classList.toggle("speaking",speakingAnswer);
-b.textContent=speakingAnswer?"\u{1F50A}":(recActive?"\u{1F399}\u{FE0F}":"\u{1F3A4}");
+b.classList.toggle("listening",recActive||recording);b.classList.toggle("speaking",speakingAnswer);
+b.textContent=transcribing?"\u{23F3}":speakingAnswer?"\u{1F50A}":(recording?"\u{23FA}\u{FE0F}":(recActive?"\u{1F399}\u{FE0F}":"\u{1F3A4}"));
 var st=$("voicestate");if(!st)return;
-if(!SR){st.textContent=""}
+if(transcribing)st.textContent="מתמלל..."
+else if(recording)st.textContent="מקליט... דברו, ובסוף לוחצים שוב על 🎤"
 else if(speakingAnswer)st.textContent="מדבר... 🔊"
 else if(recActive)st.textContent="מקשיב... דברו! 🎤"
+else if(voiceMode&&useRecorder())st.textContent="לוחצים על 🎤 כדי להקליט שאלה"
 else if(voiceMode)st.textContent=""
 else st.textContent="טיפ: לחצו על 🎤 ופשוט דברו - בלי להקליד"}
 function toggleVoice(){
-if(!SR){chatLog.push({me:false,text:"הדפדפן הזה עדיין לא תומך בשיחה קולית. באנדרואיד ובמחשב זה עובד בכרום, ובאייפון בספארי העדכני. בינתיים אפשר להקליד 😊"});renderChat();return}
-if(voiceMode){stopVoice()}else{listenRetries=0;voiceMode=true;if(synth)synth.cancel();startListening()}}
-function stopVoice(){clearWatch();voiceMode=false;if(rec){try{rec.onend=null;rec.stop()}catch(e){}}recActive=false;speakingAnswer=false;if(synth)synth.cancel();updMic()}
+if(!voiceMode){
+listenRetries=0;voiceMode=true;if(synth)synth.cancel();
+if(useRecorder()){
+if(!geminiKey()){voiceMode=false;chatLog.push({me:false,text:SR?"זיהוי הדיבור של המכשיר לא מגיב כרגע. אפשר להקליט שאלות דרך הענן עם מפתח Gemini (ב-⚙️) - או פשוט להשתמש במיקרופון של המקלדת (Gboard) ואז שליחה.":"הדפדפן הזה לא תומך בזיהוי דיבור. עם מפתח Gemini (ב-⚙️) אפשר להקליט שאלות דרך הענן - או להשתמש במיקרופון של המקלדת."});renderChat();return}
+chatLog.push({me:false,text:"מצב הקלטה דרך הענן 🎧 לוחצים על 🎤, מדברים, ולוחצים שוב כשמסיימים - והשאלה נשלחת לבד."});renderChat();startRecorder();return}
+if(!SR){voiceMode=false;chatLog.push({me:false,text:"הדפדפן הזה עדיין לא תומך בשיחה קולית. באנדרואיד ובמחשב זה עובד בכרום, ובאייפון בספארי העדכני. בינתיים אפשר להקליד 😊"});renderChat();return}
+startListening();return}
+if(useRecorder()){if(recording){stopRecorder()}else{startRecorder()}return}
+stopVoice()}
+function stopVoice(){clearWatch();voiceMode=false;srDead=false;if(rec){try{rec.onend=null;rec.stop()}catch(e){}}recActive=false;if(recording){discardRec=true;stopRecorder()}speakingAnswer=false;if(synth)synth.cancel();updMic()}
 var listenWatch=null,listenGotResult=false,listenRetries=0,voiceInterim="";
 function clearWatch(){if(listenWatch){clearTimeout(listenWatch);listenWatch=null}}
 function micTroubleMsg(){return "המיקרופון נפתח אבל לא הגיע קול. בודקים בבקשה: 1) שהמיקרופון מורשה לאתר - לוחצים על המנעול בשורת הכתובת של כרום ← הרשאות ← מיקרופון ← אפשר; 2) שהאינטרנט פעיל (זיהוי הדיבור עובד דרך הענן); 3) שאפליקציית Google מותקנת ומעודכנת - בלי היא כרום לא מזהה דיבור. אחרי זה לוחצים שוב על 🎤."}
@@ -475,10 +484,78 @@ listenWatch=setTimeout(function(){
 if(recActive&&!listenGotResult){
 var r2=rec;rec=null;recActive=false;try{r2.onend=null;r2.stop()}catch(e){}
 if(listenRetries<1){listenRetries++;startListening()}
-else{listenRetries=0;voiceMode=false;chatLog.push({me:false,text:micTroubleMsg()});renderChat()}
+else{listenRetries=0;
+if(geminiKey()&&recorderSupported()){srDead=true;chatLog.push({me:false,text:"זיהוי הדיבור של המכשיר לא מגיב - אין בעיה! עוברים להקלטה דרך הענן 🎧 לוחצים על 🎤, מדברים, ולוחצים שוב בסוף."});renderChat();startRecorder()}
+else{voiceMode=false;chatLog.push({me:false,text:micTroubleMsg()});renderChat()}}
 updMic()}
 },10000);
 updMic()}
+var mediaRec=null,recChunks=[],recStream=null,recording=false,transcribing=false,srDead=false,discardRec=false,recTimer=null;
+function geminiKey(){return localStorage.getItem("ts_gemini_key")}
+function recorderSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
+function useRecorder(){return voiceMode&&(!SR||srDead)}
+async function startRecorder(){
+if(recording||transcribing)return;
+if(!recorderSupported()){chatLog.push({me:false,text:"הדפדפן לא תומך בהקלטה - אפשר להשתמש במיקרופון של המקלדת (Gboard) ואז שליחה."});renderChat();return}
+try{recStream=await navigator.mediaDevices.getUserMedia({audio:true})}
+catch(e){chatLog.push({me:false,text:"לא הצלחתי לפתוח את המיקרופון - לאשר גישה דרך המנעול בשורת הכתובת ← הרשאות ← מיקרופון ← אפשר, ולנסות שוב."});renderChat();return}
+recChunks=[];discardRec=false;
+try{mediaRec=new MediaRecorder(recStream)}catch(e2){try{mediaRec=new MediaRecorder(recStream,{mimeType:"audio/webm"})}catch(e3){chatLog.push({me:false,text:"ההקלטה לא נפתחה ("+(e3.message||e3)+")"});renderChat();return}}
+mediaRec.ondataavailable=function(ev){if(ev.data&&ev.data.size)recChunks.push(ev.data)};
+mediaRec.onstop=function(){onRecordingDone()};
+try{mediaRec.start()}catch(e4){chatLog.push({me:false,text:"ההקלטה לא התחילה - נסו שוב."});renderChat();return}
+recording=true;
+clearTimeout(recTimer);recTimer=setTimeout(function(){if(recording)stopRecorder()},30000);
+updMic()}
+function stopRecorder(){clearTimeout(recTimer);if(mediaRec&&mediaRec.state!=="inactive"){try{mediaRec.stop()}catch(e){}}
+if(recStream){recStream.getTracks().forEach(function(t){t.stop()});recStream=null}
+recording=false;updMic()}
+function blobToWavB64(blob){return new Promise(function(res,rej){
+var fr=new FileReader();
+fr.onload=function(){try{
+var AC=window.AudioContext||window.webkitAudioContext;var ac=new AC();
+ac.decodeAudioData(fr.result,function(buf){
+try{
+var sr=buf.sampleRate;var n=Math.min(buf.length,sr*60);var ch=buf.getChannelData(0);
+var pcm=new Int16Array(n);for(var i=0;i<n;i++){var v=Math.max(-1,Math.min(1,ch[i]));pcm[i]=v<0?v*0x8000:v*0x7FFF}
+var ab=new ArrayBuffer(44+n*2);var dv=new DataView(ab);
+function ws(o,st){for(var j=0;j<st.length;j++)dv.setUint8(o+j,st.charCodeAt(j))}
+ws(0,"RIFF");dv.setUint32(4,36+n*2,true);ws(8,"WAVE");ws(12,"fmt ");dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,sr,true);dv.setUint32(28,sr*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);ws(36,"data");dv.setUint32(40,n*2,true);
+new Int16Array(ab,44).set(pcm);
+var bytes=new Uint8Array(ab);var bin="";for(var k=0;k<bytes.length;k+=8192){bin+=String.fromCharCode.apply(null,bytes.subarray(k,k+8192))}
+if(ac.close)ac.close();res(btoa(bin))}catch(ex){rej(ex)}},function(err){rej(err)})}catch(ex0){rej(ex0)}};
+fr.onerror=function(){rej(new Error("read-failed"))};fr.readAsArrayBuffer(blob)})}
+async function transcribeAudio(b64){
+var key=geminiKey();
+var body=JSON.stringify({contents:[{role:"user",parts:[{text:"Transcribe the Hebrew speech in this audio recording verbatim, in Hebrew letters. Output ONLY the transcript text - no translation, no commentary, no extra words. If no speech is audible, output nothing."},{inlineData:{mimeType:"audio/wav",data:b64}}]}],generationConfig:{temperature:0,maxOutputTokens:300}});
+var r=null,mi=0;
+for(mi=0;mi<GEMINI_MODELS.length;mi++){
+r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body});
+if(r.ok)break;
+if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)continue;
+var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}
+if(!r.ok){var eg=new Error("404 model unavailable");eg.status=404;throw eg}
+var d=await r.json();
+return ((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("").trim()}
+async function onRecordingDone(){
+if(discardRec){discardRec=false;recChunks=[];return}
+var chunks=recChunks;recChunks=[];
+if(!chunks.length)return;
+var blob=new Blob(chunks,{type:(mediaRec&&mediaRec.mimeType)||"audio/webm"});
+if(blob.size<800){if(voiceMode){chatLog.push({me:false,text:"לא שמעתי כלום - לוחצים על 🎤 ומנסים שוב, קרוב למיקרופון."});renderChat()}return}
+transcribing=true;updMic();
+try{
+var b64=await blobToWavB64(blob);
+var tr=await transcribeAudio(b64);
+transcribing=false;updMic();
+if(tr){var inp=$("chatin");if(inp)inp.value=tr;chatSend()}
+else if(voiceMode){chatLog.push({me:false,text:"לא זיהיתי מילים בהקלטה - לוחצים על 🎤 ומנסים שוב."});renderChat()}}
+catch(e){transcribing=false;updMic();
+var st=e.status||0;var msg;
+if(st===400||st===401||st===403)msg="מפתח ה-Gemini לא תקין או פג תוקף - אפשר לעדכן ב-⚙️.";
+else if(st===429)msg="מכסת התמלול לדקה או ליום נגמרה. נסו שוב בעוד דקה, או הקלידו (אפשר עם מיקרופון המקלדת).";
+else msg="התמלול נכשל ("+(e.message||"שגיאת רשת")+"). בודקים אינטרנט ומנסים שוב.";
+chatLog.push({me:false,text:msg});renderChat()}}
 var heVoiceWarned=false;
 function maybeSpeakAnswer(text){
 if(!voiceMode||!synth||!text)return;
@@ -488,8 +565,8 @@ var v=heVoice();
 if(!v&&!heVoiceWarned){heVoiceWarned=true;chatLog.push({me:false,text:"שימו לב: לא מצאתי קול עברי מותקן במכשיר, ולכן ההקראה עלולה להישמע לא טבעית. כדי להפעיל קול עברי: באנדרואיד - הגדרות, שפה וקלט, המרת טקסט לדיבור, ובוחרים בקול Google בעברית (או מתקינים את שירותי הדיבור של Google). באייפון - הגדרות, נגישות, תוכן מדובר, קולות, עברית, ומורידים קול (למשל כרמל). אחרי ההתקנה חוזרים לאפליקציה וזה עובד."});renderChat()}
 var rate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
 var u=new SpeechSynthesisUtterance(clean);u.lang="he-IL";if(v)u.voice=v;u.rate=rate;
-u.onend=function(){speakingAnswer=false;updMic();if(voiceMode)setTimeout(function(){if(voiceMode)startListening()},450)};
-u.onerror=function(){speakingAnswer=false;updMic();if(voiceMode)setTimeout(function(){if(voiceMode)startListening()},450)};
+u.onend=function(){speakingAnswer=false;updMic();if(voiceMode&&!useRecorder())setTimeout(function(){if(voiceMode)startListening()},450)};
+u.onerror=function(){speakingAnswer=false;updMic();if(voiceMode&&!useRecorder())setTimeout(function(){if(voiceMode)startListening()},450)};
 synth.speak(u);updMic()}
 async function runMicDiag(){
 var s=$("chatsettings");if(s)s.hidden=true;
@@ -613,6 +690,7 @@ if(!r2.ok){var e2=await r2.json().catch(function(){return{}});var err2=new Error
 var d2=await r2.json();return{text:d2.choices[0].message.content,refs:refsOf(m)}}
 async function chatSend(){var i=$("chatin");var q=(i.value||"").trim();if(!q)return;i.value="";
 if(rec){try{rec.onend=null;rec.stop()}catch(e){}recActive=false}
+if(recording){discardRec=true;stopRecorder()}
 if(speakingAnswer){if(synth)synth.cancel();speakingAnswer=false}updMic();
 chatLog.push({me:true,text:q});renderChat();
 var tp=document.createElement("div");tp.className="typing";tp.id="typing";tp.textContent="כותב תשובה...";$("chatlog").appendChild(tp);$("chatlog").scrollTop=$("chatlog").scrollHeight;
@@ -627,7 +705,7 @@ var t=$("typing");if(t)t.remove();renderChat();if(chatLog.length)maybeSpeakAnswe
 function toggleSettings(){var s=$("chatsettings");s.hidden=!s.hidden;if(s.hidden)return;
 var p=provider();var key=activeKey();
 var h='<b>שיחה חכמה בשפה טבעית מלאה</b><br>בחרו שירות והזינו מפתח. האפליקציה שומרת את המפתח באחסון המקומי של הדפדפן במכשיר הזה, ושולחת אותו רק בבקשות לשירות ה-AI שבחרתם.<div class="row"><button onclick="setProvider(\'gemini\')"'+(p==="gemini"?' style="font-weight:700"':'')+'>Gemini - חינם ✨</button><button onclick="setProvider(\'openai\')"'+(p==="openai"?' style="font-weight:700"':'')+'>OpenAI</button></div>';
-if(p==="gemini")h+='<div style="margin-top:6px">איך משיגים מפתח Gemini חינמי (דקה, בלי כרטיס אשראי): נכנסים ל-<b>aistudio.google.com</b>, מתחברים עם חשבון Google, לוחצים Get API key ואז Create API key - ומדביקים כאן. המכסה החינמית משתנה מדי פעם לפי המודל (המספר המדויק מופיע ב-AI Studio). אם היא נגמרת, האפליקציה עוברת אוטומטית למודל חינמי אחר - והחיפוש החכם באפליקציה תמיד עובד בלי מפתח.</div>';
+if(p==="gemini")h+='<div style="margin-top:6px">איך משיגים מפתח Gemini חינמי (דקה, בלי כרטיס אשראי): נכנסים ל-<b>aistudio.google.com</b>, מתחברים עם חשבון Google, לוחצים Get API key ואז Create API key - ומדביקים כאן. המכסה החינמית משתנה מדי פעם לפי המודל (המספר המדויק מופיע ב-AI Studio). אם היא נגמרת, האפליקציה עוברת אוטומטית למודל חינמי אחר - והחיפוש החכם באפליקציה תמיד עובד בלי מפתח. שאלה קולית שמתומללת דרך הענן צורכת חלק קטן מהמכסה (אודיו נספר כטוקנים).</div>';
 else h+='<div style="margin-top:6px">מפתח OpenAI (gpt-4o-mini) - בתשלום זעיר של שברי סנט לשאלה, יורד מהחשבון שלכם.</div>';
 h+='<div class="row" style="margin-top:6px"><button onclick="runMicDiag()">🎤 בדיקת מיקרופון</button></div><input id="oaikey" type="password" placeholder="'+(p==="gemini"?"מפתח Gemini (AIza...)":"מפתח OpenAI (sk-...)")+'" autocomplete="off"><div class="row"><button onclick="saveKey()">שמירה</button><button onclick="clearKey()">מחיקת מפתח</button></div>';
 s.innerHTML=h;var ki=$("oaikey");if(ki)ki.value=key?"••••••••":""}
@@ -639,4 +717,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.15.4 - mic diagnostic + Gboard degradation tip (pending deploy) -->
+<!-- v1.16.0 - recorder mode: MediaRecorder -> WAV -> Gemini transcription, auto-fallback from dead recognizer -->
