@@ -438,7 +438,7 @@ let speaking=false,paused=false;
 function heVoice(){if(!synth)return null;var vs=synth.getVoices().filter(function(v){return /^he([_-]|$)/i.test(v.lang)||/hebrew|עברית/i.test(v.name)});if(!vs.length)return null;function sc(v){return (/google|online|natural|premium|enhanced|neural/i.test(v.name)?4:0)+(!v.localService?2:0)+(v.default?1:0)}return vs.slice().sort(function(a,b){return sc(b)-sc(a)})[0]}
 if(synth)synth.onvoiceschanged=()=>{};
 var rSegs=[],rIdx=0,rActive=false,rPaused=false,rStory=null,curStory=null,rGen=0;
-function stopSpeak(){if(synth)synth.cancel();if(cloudAudio){try{cloudAudio.pause()}catch(e){}}rActive=false;rPaused=false;rHideActive=false;relWake();updPlayer()}
+function stopSpeak(){clearBoundaryTimers();if(synth)synth.cancel();if(cloudAudio){try{cloudAudio.pause()}catch(e){}}rActive=false;rPaused=false;rHideActive=false;relWake();updPlayer()}
 function buildSegs(st){var segs=[{t:st.title+".",el:null}];st.body.forEach(function(b,i){segs.push({t:b,el:"bpara"+i})});if(st.lesson)segs.push({t:"מה לומדים? "+st.lesson,el:"blesson"});(st.rashi||[]).forEach(function(r,i){segs.push({t:'רש"י אומר, על '+r.ref+": "+r.quote+" "+r.explain,el:"brashi"+i})});return segs}
 function hlSeg(el){document.querySelectorAll(".reading").forEach(function(x){x.classList.remove("reading")});if(el){var n=$(el);if(n){n.classList.add("reading");n.scrollIntoView({block:"center",behavior:"smooth"})}}}
 /* === screen wake lock (reading-scoped, pattern from guitar coach) === */
@@ -454,10 +454,10 @@ var cloudAudio=null,cloudFailed=false,ttsCache={};
 function cloudTtsOn(){return localStorage.getItem("ts_cloud_tts")==="1"&&typeof geminiKey==="function"&&!!geminiKey()}
 async function fetchTtsAudio(text,statusEl){
 var key=geminiKey();var r=null,mi=0,got=false;
-for(mi=0;mi<GEMINI_TTS_MODELS.length&&!got;mi++){
+for(mi=0;mi<GEMINI_TTS_MODELS.length&&!got;mi++){// batch requests take longer to generate
 var body=JSON.stringify({model:GEMINI_TTS_MODELS[mi],input:[{type:"user_input",content:[{type:"text",text:text,annotations:[{type:"speech_metadata",style:"קריינות סיפור חמה וברורה לילדים, בעברית טבעית"}]}]}],response_format:{type:"audio"},generation_config:{speech_config:[{voice:"Kore"}]}});
 for(var att=0;att<3;att++){
-var ctl=new AbortController();var tm=setTimeout(function(){ctl.abort()},30000);
+var ctl=new AbortController();var tm=setTimeout(function(){ctl.abort()},60000);
 try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:body,signal:ctl.signal})}
 catch(fe){r=null}
 clearTimeout(tm);
@@ -478,25 +478,49 @@ var u=new SpeechSynthesisUtterance(rSegs[i].t);u.lang="he-IL";if(v)u.voice=v;u.r
 u.onend=function(){segDone(i,g)};
 u.onerror=function(){if(!rActive||g!==rGen)return;rActive=false;relWake();updPlayer()};
 synth.speak(u)}
-function playCloud(i,g,url){if(!rActive||g!==rGen)return;
+/* batched cloud playback: several segments per TTS request, next batches prefetched while playing */
+var rBatches=[],ttsInflight={},boundaryTimers=[];
+function buildBatches(segs){var bs=[],cur=null;
+for(var i=0;i<segs.length;i++){var t=segs[i].t;
+if(!cur){cur={idxs:[i],t:t,chars:t.length}}
+else if(cur.chars+t.length<1400){cur.idxs.push(i);cur.t+="\n\n"+t;cur.chars+=t.length}
+else{bs.push(cur);cur={idxs:[i],t:t,chars:t.length}}}
+if(cur)bs.push(cur);return bs}
+function segBatch(i){for(var b=0;b<rBatches.length;b++){var ids=rBatches[b].idxs;if(i>=ids[0]&&i<=ids[ids.length-1])return b}return rBatches.length-1}
+function clearBoundaryTimers(){boundaryTimers.forEach(function(t){clearTimeout(t)});boundaryTimers=[]}
+function batchOffsetSec(bt,segIdx,dur){var before=0,total=0;bt.idxs.forEach(function(ix){var c=rSegs[ix].t.length;total+=c;if(ix<segIdx)before+=c});return total?before/total*dur:0}
+function scheduleBoundaries(bi,g){clearBoundaryTimers();var bt=rBatches[bi];if(!bt||bt.idxs.length<2)return;
+var dur=cloudAudio.duration;if(!dur||!isFinite(dur))return;
+var cur=cloudAudio.currentTime||0;
+for(var k=1;k<bt.idxs.length;k++){(function(segI){var off=batchOffsetSec(bt,segI,dur);if(off<=cur)return;
+boundaryTimers.push(setTimeout(function(){if(!rActive||g!==rGen)return;rIdx=segI;updPlayer();hlSeg(rSegs[segI].el)},Math.max(0,(off-cur)*1000)))})(bt.idxs[k])}}
+function prefetchBatch(bi){if(!rBatches[bi])return;var bt=rBatches[bi];if(ttsCache[bt.t]||ttsInflight[bt.t])return;ttsInflight[bt.t]=true;
+fetchTtsAudio(bt.t,null).then(function(u){ttsCache[bt.t]=u}).catch(function(e){}).then(function(){delete ttsInflight[bt.t]})}
+function playCloudBatch(bi,g,startSeg){if(!rActive||g!==rGen)return;var bt=rBatches[bi];if(!bt)return;
+rIdx=(startSeg!==undefined?startSeg:bt.idxs[0]);updPlayer();hlSeg(rSegs[rIdx].el);
+var go=function(url){if(!rActive||g!==rGen)return;
 if(!cloudAudio)cloudAudio=new Audio();
 cloudAudio.src=url;
-cloudAudio.onended=function(){segDone(i,g)};
-cloudAudio.onerror=function(){if(rActive&&g===rGen)speakDeviceSeg(i,g)};
-cloudAudio.play().catch(function(){if(rActive&&g===rGen)speakDeviceSeg(i,g)});
-updPlayer()}
+cloudAudio.onloadedmetadata=function(){var bt2=rBatches[bi];if(!bt2)return;
+if(startSeg!==undefined&&startSeg>bt2.idxs[0]){var off=batchOffsetSec(bt2,startSeg,cloudAudio.duration);if(isFinite(off)&&off>0)cloudAudio.currentTime=off}
+scheduleBoundaries(bi,g)};
+cloudAudio.onended=function(){clearBoundaryTimers();if(!rActive||g!==rGen)return;
+if(bi+1<rBatches.length)playCloudBatch(bi+1,g);else{rActive=false;rStory=null;relWake();updPlayer();hlSeg(null)}};
+cloudAudio.onerror=function(){clearBoundaryTimers();if(rActive&&g===rGen){cloudFailed=true;var s2=$("pState");if(s2)s2.textContent="קריאת הענן לא זמינה כרגע - עובר לקול המכשיר";speakDeviceSeg(rIdx,g)}};
+cloudAudio.play().catch(function(){clearBoundaryTimers();if(rActive&&g===rGen){cloudFailed=true;speakDeviceSeg(rIdx,g)}});
+updPlayer();
+prefetchBatch(bi+1);prefetchBatch(bi+2)};
+var url=ttsCache[bt.t];
+if(url){go(url);return}
+var st=$("pState");if(st)st.textContent="מכין קריאת ענן...";
+ttsInflight[bt.t]=true;
+fetchTtsAudio(bt.t,st).then(function(u2){ttsCache[bt.t]=u2;delete ttsInflight[bt.t];go(u2)}).catch(function(e){delete ttsInflight[bt.t];
+cloudFailed=true;if(rActive&&g===rGen){var st2=$("pState");if(st2)st2.textContent="קריאת הענן לא זמינה כרגע - עובר לקול המכשיר";speakDeviceSeg(rIdx,g)}})}
 function speakSeg(i){if(!rActive)return;rIdx=i;var g=++rGen;updPlayer();hlSeg(rSegs[i].el);
-var txt=rSegs[i].t;
-if(cloudTtsOn()&&!cloudFailed){
-var st=$("pState");if(st)st.textContent="מכין קריאת ענן... קטע "+(i+1)+"/"+rSegs.length;
-var url=ttsCache[txt];
-if(url){playCloud(i,g,url);return}
-fetchTtsAudio(txt,st).then(function(u2){ttsCache[txt]=u2;playCloud(i,g,u2)}).catch(function(e){
-cloudFailed=true;if(rActive&&g===rGen){var st2=$("pState");if(st2)st2.textContent="קריאת הענן לא זמינה כרגע - עובר לקול המכשיר";speakDeviceSeg(i,g)}});
-return}
+if(cloudTtsOn()&&!cloudFailed){playCloudBatch(segBatch(i),g,i);return}
 speakDeviceSeg(i,g)}
-function startRead(st){if(!synth&&!cloudTtsOn()){alert("הדפדפן הזה לא תומך בהקראה");return}stopSpeak();rStory=st;rSegs=buildSegs(st);rActive=true;rPaused=false;rIdx=0;cloudFailed=false;reqWake();speakSeg(0)}
-function pauseRead(){if(!rActive)return;rPaused=true;rActive=false;if(synth)synth.cancel();if(cloudAudio){try{cloudAudio.pause()}catch(e){}}relWake();updPlayer()}
+function startRead(st){if(!synth&&!cloudTtsOn()){alert("הדפדפן הזה לא תומך בהקראה");return}stopSpeak();rStory=st;rSegs=buildSegs(st);rBatches=buildBatches(rSegs);rActive=true;rPaused=false;rIdx=0;cloudFailed=false;ttsInflight={};reqWake();speakSeg(0)}
+function pauseRead(){if(!rActive)return;rPaused=true;rActive=false;clearBoundaryTimers();if(synth)synth.cancel();if(cloudAudio){try{cloudAudio.pause()}catch(e){}}relWake();updPlayer()}
 function resumeRead(){if(!rStory||!rSegs.length)return;rPaused=false;rActive=true;reqWake();speakSeg(rIdx)}
 function updPlayer(){const b=$("playBtn");if(!b)return;b.textContent=rActive?"⏸ השהה":"▶ הקראה";const st=$("pState");if(!st)return;st.textContent=rActive?("מקריא... קטע "+(rIdx+1)+"/"+rSegs.length):(rPaused&&rSegs.length)?("מושהה בקטע "+(rIdx+1)+"/"+rSegs.length):""}
 function cycleRate(){let r=parseFloat(localStorage.getItem("tsr-rate")||"0.95");r=r>=1.2?0.8:r>=1?1.2:1;localStorage.setItem("tsr-rate",r);const b=$("rateBtn");if(b)b.textContent="מהירות "+r;return r}
@@ -871,4 +895,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.17.3 - speed: direct compressed blob upload (no WAV), fast-model chain for transcription+story QA, SSE streaming answers, staged status; story QA + chat: answer from story first, labeled Tanach-knowledge fallback when not in story, never guess -->
+<!-- v1.17.4 - cloud TTS gapless: batched multi-segment requests (~3/story instead of ~9, less quota), parallel prefetch of next 2 batches, char-ratio boundary highlights, seek-resume mid-batch; v1.17.3: direct blob upload, fast chains, SSE answers, Tanach-knowledge fallback -->
