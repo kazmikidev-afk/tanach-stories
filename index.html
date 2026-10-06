@@ -49,6 +49,28 @@ h1{font-size:1.5rem;color:var(--accent)}
 footer{color:var(--muted);font-size:.82rem;text-align:center;padding:24px 0 8px}
 a{color:var(--accent2)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.chatfab{position:fixed;bottom:18px;left:18px;z-index:60;width:56px;height:56px;border-radius:50%;border:0;font-size:1.5rem;background:var(--accent,#6b4fbb);color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.25);cursor:pointer}
+.chatsheet{position:fixed;inset:0;z-index:70;background:var(--bg,#fff);display:flex;flex-direction:column}
+.chatsheet[hidden]{display:none}
+.chathead{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line,#e5e0d8)}
+.chathead h2{font-size:1.1rem;margin:0;flex:1}
+.chatmode{font-size:.72rem;color:var(--dim,#8a8577)}
+.chatlog{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 12px;border-radius:14px;line-height:1.55;font-size:.95rem;white-space:pre-wrap}
+.msg.me{align-self:flex-start;background:var(--accent,#6b4fbb);color:#fff;border-bottom-left-radius:4px}
+.msg.bot{align-self:flex-end;background:var(--card,#f5f2ec);border-bottom-right-radius:4px}
+.msg .refs{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.msg .refs button{text-align:start;border:1px solid var(--line,#e5e0d8);background:var(--bg,#fff);border-radius:10px;padding:6px 10px;font-size:.85rem;cursor:pointer}
+.chatinput{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line,#e5e0d8)}
+.chatinput input{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line,#e5e0d8);font-size:1rem;background:var(--bg,#fff);color:inherit}
+.chatinput button{padding:10px 16px;border-radius:12px;border:0;background:var(--accent,#6b4fbb);color:#fff;font-size:1rem;cursor:pointer}
+.chatsettings{padding:8px 12px;border-bottom:1px solid var(--line,#e5e0d8);font-size:.8rem;color:var(--dim,#8a8577)}
+.chatsettings input{width:100%;margin-top:6px;padding:8px;border-radius:10px;border:1px solid var(--line,#e5e0d8);font-size:.85rem;background:var(--bg,#fff);color:inherit;direction:ltr;text-align:left}
+.chatsettings .row{display:flex;gap:6px;margin-top:6px}
+.chatsettings .row button{flex:1;padding:6px;border-radius:8px;border:1px solid var(--line,#e5e0d8);background:var(--card,#f5f2ec);cursor:pointer;font-size:.8rem}
+.typing{align-self:flex-end;color:var(--dim,#8a8577);font-size:.85rem;padding:4px 12px}
+.snips{font-size:.8rem;color:var(--dim,#8a8577);margin-top:2px}
+
 </style>
 </head>
 <body>
@@ -61,8 +83,23 @@ a{color:var(--accent2)}
   <button class="iconbtn" id="darkBtn" title="מצב לילה" aria-label="מצב לילה">🌙</button>
 </header>
 <main id="app"></main>
-<footer>נבנה באהבה למשפחה שלנו · יחידה 1 מתוך 13 · המקור: ספרי התנ״ך</footer>
+<footer>נבנה באהבה למשפחה שלנו · 13 יחידות שלמות · 86 סיפורים · המקור: ספרי התנ״ך</footer>
 </div>
+<button class="chatfab" id="chatfab" onclick="openChat()" title="שאלו אותי" aria-label="שאלו אותי">💬</button>
+<div class="chatsheet" id="chatsheet" hidden>
+<div class="chathead">
+  <button class="iconbtn" onclick="closeChat()" aria-label="סגירה">✕</button>
+  <h2>💬 שאלו אותי<div class="chatmode" id="chatmode"></div></h2>
+  <button class="iconbtn" onclick="toggleSettings()" aria-label="הגדרות">⚙️</button>
+</div>
+<div class="chatsettings" id="chatsettings" hidden></div>
+<div class="chatlog" id="chatlog"></div>
+<div class="chatinput">
+  <input id="chatin" placeholder="שאלו שאלה על סיפורי התנ״ך..." onkeydown="if(event.key==='Enter')chatSend()">
+  <button onclick="chatSend()">שליחה</button>
+</div>
+</div>
+
 <script>
 "use strict";
 /* ===== DATA (structured for future search engine: unit/story ids, book, chapters, topics, characters) ===== */
@@ -388,12 +425,16 @@ function cycleRate(){let r=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
 const app=$("app");
 function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
 function viewHome(q){q=(q||"").trim();let h="";
-if(q){h+='<input class="searchbox" id="q" placeholder="חיפוש סיפור..." value="'+esc(q)+'">';let found=[];UNITS.forEach(u=>u.stories.forEach(s=>{if((s.title+s.summary+(s.topics||[]).join(" ")+(s.characters||[]).join(" ")+(s.lesson||"")+(s.rashi||[]).map(r=>r.quote+r.explain).join(" ")).includes(q))found.push([u,s])}));
-h+='<div class="card"><b>'+found.length+' תוצאות</b></div>';found.forEach(([u,s])=>{h+='<button class="storybtn" onclick="goStory('+u.id+',\''+s.id+'\')"><span class="num">'+s.n+'</span><span><h3>'+esc(s.title)+'</h3><div class="src">'+esc(s.book)+' '+esc(s.chapters)+' · יחידה '+u.id+'</div></span><span class="tick">'+(read[s.id]?"✅":"")+'</span></button>'});app.innerHTML=h;const qi=$("q");qi.focus();qi.oninput=()=>{const v=qi.value;const pos=qi.selectionStart;viewHome(v);const q2=$("q");q2.setSelectionRange(pos,pos)};return}
+if(q){h+='<input class="searchbox" id="q" placeholder="חיפוש סיפור..." value="'+esc(q)+'">';
+const found=searchStories(q).slice(0,20);
+h+='<div class="card"><b>'+found.length+' תוצאות</b>'+(found.length?'':' - נסו מילה אחרת, שם של דמות, או נושא (למשל: אמונה, אריה, חנוכה)')+'</div>';
+found.forEach(([u,s,sc])=>{const hay=normT(s.body.join(" "));const t0=wordsOf(q).find(t=>hay.indexOf(t)>-1);let snip="";if(t0){const i=hay.indexOf(t0);const raw=s.body.join(" ");snip="..."+raw.slice(Math.max(0,i-40),i+80)+"..."}
+h+='<button class="storybtn" onclick="goStory('+u.id+',\''+s.id+'\')"><span class="num">'+s.n+'</span><span><h3>'+esc(s.title)+'</h3><div class="src">'+esc(s.book)+' '+esc(s.chapters)+' · יחידה '+u.id+'</div>'+(snip?'<div class="snips">'+esc(snip)+'</div>':'')+'</span><span class="tick">'+(read[s.id]?"✅":"")+'</span></button>'});
+app.innerHTML=h;const qi=$("q");qi.focus();qi.oninput=()=>{const v=qi.value;const pos=qi.selectionStart;viewHome(v);const q2=$("q");q2.setSelectionRange(pos,pos)};return}
 h+='<input class="searchbox" id="q" placeholder="חיפוש סיפור...">';
 const totalRead=UNITS.reduce((a,u)=>a+u.stories.filter(s=>read[s.id]).length,0);
 const totalStories=UNITS.reduce((a,u)=>a+u.stories.length,0);
-h+='<div class="card">כאן אוספים את סיפורי התנ״ך הגדולים, <b>לפי הסדר</b> - מהבריאה ועד שיבת ציון. כל סיפור עם מקור מדויק, התאמה לגיל, וכפתור הקראה בקול - לפני השינה או בנסיעה. 🌙🚗<div class="progressline">נקראו '+totalRead+' מתוך '+totalStories+' סיפורים שפורסמו · יחידה 1 מוכנה, והשאר בדרך</div></div>';
+h+='<div class="card">כאן אוספים את סיפורי התנ״ך הגדולים, <b>לפי הסדר</b> - מהבריאה ועד שיבת ציון. כל סיפור עם מקור מדויק, התאמה לגיל, וכפתור הקראה בקול - לפני השינה או בנסיעה. 🌙🚗<div class="progressline">נקראו '+totalRead+' מתוך '+totalStories+' סיפורים · כל 13 היחידות מוכנות ✨</div></div>';
 UNITS.forEach(u=>{if(u.status==="ready"){const done=u.stories.filter(s=>read[s.id]).length;
 h+='<button class="unit" onclick="goUnit('+u.id+')"><h2>'+u.id+". "+esc(u.title)+'</h2><div class="meta">'+esc(u.book)+(u.chapters?' '+esc(u.chapters):'')+' · '+u.stories.length+' סיפורים <span class="badge'+(done===u.stories.length?' done':'')+'">'+(done===u.stories.length?'הושלמה ✓':'זמינה עכשיו')+'</span></div></button>'}
 else{h+='<button class="unit soon" disabled><h2>'+u.id+". "+esc(u.title)+'</h2><div class="meta">'+esc(u.book)+' · '+u.planned+' סיפורים <span class="badge soonb">בקרוב</span></div></button>'}});
@@ -422,8 +463,59 @@ function goStory(uid,sid){location.hash="#u"+uid+"/"+sid}
 function route(){const h=location.hash;let m=h.match(/#u(\d+)\/(.+)/);if(m)return viewStory(+m[1],m[2]);m=h.match(/#u(\d+)/);if(m)return viewUnit(+m[1]);viewHome()}
 window.addEventListener("hashchange",route);
 applyDark();route();
+// ===== שלב 3: חיפוש חכם + שיחה =====
+var LLM_ON=false; // יופעל אחרי אישור המשתמש לחיבור OpenAI בתשלום
+function normT(t){return (t||"").replace(/[\u0591-\u05C7]/g,"").replace(/ך/g,"כ").replace(/ם/g,"מ").replace(/ן/g,"נ").replace(/ף/g,"פ").replace(/ץ/g,"צ").toLowerCase()}
+function toks(q){return normT(q).split(/[^א-תa-z0-9]+/).filter(function(w){return w.length>1})}
+function stem(w){var p=["וש","כש","בש","לש","מש","שה","שב","של","וכ","ול","וב","ומ","וה","ה","ב","ל","כ","מ","ש","ו"];for(var i=0;i<p.length;i++){if(w.indexOf(p[i])===0&&w.length-p[i].length>1)return w.slice(p[i].length)}return w}
+function storyHay(s){return normT(s.title+" "+s.summary+" "+(s.topics||[]).join(" ")+" "+(s.characters||[]).join(" ")+" "+s.body.join(" ")+" "+(s.lesson||"")+" "+(s.rashi||[]).map(function(r){return r.ref+" "+r.quote+" "+r.explain}).join(" "))}
+var STOP={};["מי","מה","על","של","עם","את","אתם","כי","הוא","היא","היה","הייתה","היו","למה","איך","איפה","מתי","כמה","אם","גם","זה","זאת","לא","כן","כל","יש","אין","אל","או","אני","הם","בו","בה","לו","לה","לי","אנחנו","הם","והיה","ויהי","יותר"].forEach(function(w){STOP[w]=1});
+function wordsOf(t){return toks(t).map(stem).filter(function(w){return w.length>1&&!STOP[w]})}
+function searchStories(q){var ts=wordsOf(q);if(!ts.length)return[];var out=[];UNITS.forEach(function(u){u.stories.forEach(function(s){var head=wordsOf(s.title+" "+(s.topics||[]).join(" ")+" "+(s.characters||[]).join(" "));var body=wordsOf(s.body.join(" "));var extra=wordsOf(s.summary+" "+(s.lesson||"")+" "+(s.rashi||[]).map(function(r){return r.ref+" "+r.quote+" "+r.explain}).join(" "));var sc=0;ts.forEach(function(t){head.forEach(function(w){if(w===t)sc+=8;else if(w.indexOf(t)===0&&t.length>2)sc+=5});extra.forEach(function(w){if(w===t)sc+=3;else if(w.indexOf(t)===0&&t.length>2)sc+=2});body.forEach(function(w){if(w===t)sc+=1;else if(w.indexOf(t)===0&&t.length>3)sc+=0.5})});if(sc>0)out.push([u,s,sc])})});out.sort(function(a,b){return b[2]-a[2]});return out}
+// --- chat UI ---
+var chatLog=[];
+function openChat(){$("chatsheet").hidden=false;renderChat();var i=$("chatin");if(i)i.focus()}
+function closeChat(){$("chatsheet").hidden=true}
+function chatModeTxt(){if(!LLM_ON)return "מצב חיפוש חכם באפליקציה - חינם";return localStorage.getItem("ts_openai_key")?"מצב שיחה חכמה (OpenAI)":"מצב חיפוש חכם באפליקציה"}
+function renderChat(){var log=$("chatlog");if(!log)return;var h="";
+if(!chatLog.length)h+='<div class="msg bot">שלום! אפשר לשאול אותי על כל סיפור באפליקציה - למשל: מה קרה ליוסף? מי הייתה דבורה? מה הלקח מדוד וגליית?</div>';
+chatLog.forEach(function(m){h+='<div class="msg '+(m.me?"me":"bot")+'">'+esc(m.text);if(m.refs&&m.refs.length){h+='<div class="refs">';m.refs.forEach(function(r){h+='<button onclick="closeChat();goStory('+r.u+',\''+r.s+'\')">📖 '+esc(r.label)+'</button>'});h+='</div>'}h+='</div>'});
+log.innerHTML=h;log.scrollTop=log.scrollHeight;
+var cm=$("chatmode");if(cm)cm.textContent=chatModeTxt()}
+function refsOf(m){return m.map(function(x){return{u:x[0].id,s:x[1].id,label:x[1].title+" · "+x[1].book+" "+x[1].chapters}})}
+function composeFree(q){var m=searchStories(q);
+if(!m.length)return{text:"לא מצאתי סיפור שמתאים לשאלה הזאת. נסו לשאול על דמות או אירוע - למשל: מי היה גדעון? מה קרה בכרמל? מה הלקח מיונה?",refs:[]};
+var top=m[0],u=top[0],s=top[1];
+var t=s.summary+".\n\nהסיפור המלא נמצא ביחידה "+u.id+" ("+u.title+"), "+s.book+" "+s.chapters+".";
+if(s.lesson)t+="\n\n💡 מה לומדים מזה? "+s.lesson;
+if(s.rashi&&s.rashi.length)t+='\n\n📜 ורש"י על '+s.rashi[0].ref+" אומר: "+s.rashi[0].quote+" "+s.rashi[0].explain;
+if(m.length>1)t+="\n\nקשור גם: "+m.slice(1,3).map(function(x){return x[1].title}).join(", ");
+return{text:t,refs:refsOf(m.slice(0,3))}}
+async function askLLM(q){var key=localStorage.getItem("ts_openai_key");var m=searchStories(q).slice(0,3);
+var ctx=m.map(function(x){var u=x[0],s=x[1];return "יחידה "+u.id+" ("+u.title+"), סיפור מס' "+s.n+": "+s.title+" ("+s.book+" "+s.chapters+")\n"+s.body.join("\n")+(s.lesson?"\nלקח: "+s.lesson:"")+((s.rashi&&s.rashi.length)?'\nרש"י על '+s.rashi[0].ref+": "+s.rashi[0].quote+" - "+s.rashi[0].explain:"")}).join("\n\n---\n\n");
+var sys='אתה ספרן ידידותי באפליקציית סיפורי תנ"ך למשפחה עם ילדים בגילאי 5-13. ענה בעברית פשוטה, חמה וקצרה (עד 5 משפטים). השתמש רק בקטעי הסיפורים המצורפים - אל תמציא פרטים. אם התשובה לא נמצאת בקטעים, אמר שאין על זה סיפור באפליקציה והצע את הסיפור הכי קרוב. בסוף כל תשובה הוסף שורה: "המקור: ספר ופרקים, סיפור מס׳ X".';
+var hist=chatLog.slice(-6).map(function(mm){return{role:mm.me?"user":"assistant",content:mm.text}});
+var msgs=[{role:"system",content:sys}].concat(hist).concat([{role:"user",content:"קטעי סיפורים מהאפליקציה:\n"+ctx+"\n\nהשאלה: "+q}]);
+var r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:"gpt-4o-mini",messages:msgs,temperature:0.4,max_tokens:400})});
+if(!r.ok){var e=await r.json().catch(function(){return{}});throw new Error(r.status+" "+((e.error&&e.error.message)||""))}
+var d=await r.json();return{text:d.choices[0].message.content,refs:refsOf(m)}}
+async function chatSend(){var i=$("chatin");var q=(i.value||"").trim();if(!q)return;i.value="";
+chatLog.push({me:true,text:q});renderChat();
+var tp=document.createElement("div");tp.className="typing";tp.id="typing";tp.textContent="כותב תשובה...";$("chatlog").appendChild(tp);$("chatlog").scrollTop=$("chatlog").scrollHeight;
+try{var ans;if(LLM_ON&&localStorage.getItem("ts_openai_key")){ans=await askLLM(q)}else{await new Promise(function(r){setTimeout(r,250)});ans=composeFree(q)}
+chatLog.push({me:false,text:ans.text,refs:ans.refs})}
+catch(e){chatLog.push({me:false,text:e.message&&e.message.indexOf("401")===0?"מפתח ה-OpenAI לא תקין או פג תוקף. אפשר לעדכן אותו למעלה בלחצן על ⚙️, או למחוק אותו ולהשתמש בחיפוש החכם החינמי.":"משהו השתבש בשיחה ("+(e.message||"שגיאת רשת")+"). נסו שוב, או בדקו את החיבור לאינטרנט."})}
+var t=$("typing");if(t)t.remove();renderChat()}
+function toggleSettings(){var s=$("chatsettings");s.hidden=!s.hidden;if(s.hidden)return;
+if(!LLM_ON){s.innerHTML='<b>שיחה חכמה בשפה טבעית מלאה (דרך OpenAI) - בדרך אליכם.</b> התכונה בנויה ומוכנה; היא תופעל אחרי שתאשרו חיבור של מפתח OpenAI משלכם (עלות זעירה של שברי סנט לשאלה). בינתיים - החיפוש החכם עובד חינם לגמרי.';return}
+var ki=localStorage.getItem("ts_openai_key")?"••••••••":"";
+s.innerHTML='יש מפתח OpenAI? הזינו אותו כאן והשיחה תהיה בשפה טבעית לגמרי. המפתח נשמר <b>רק במכשיר הזה</b> (localStorage) ולא נשלח לשום מקום חוץ מ-OpenAI. השאלות יורדות מחשבון ה-OpenAI שלכם (gpt-4o-mini - שברי סנט לשאלה). בלי מפתח - החיפוש החכם עובד חינם.<input id="oaikey" type="password" placeholder="sk-..." autocomplete="off"><div class="row"><button onclick="saveKey()">שמירה</button><button onclick="clearKey()">מחיקת מפתח</button></div>';
+$("oaikey").value=ki}
+function saveKey(){var v=$("oaikey").value.trim();if(v&&v!=="••••••••"){localStorage.setItem("ts_openai_key",v);$("oaikey").value="••••••••"}renderChat()}
+function clearKey(){localStorage.removeItem("ts_openai_key");$("oaikey").value="";renderChat()}
+
 </script>
 </body>
 </html>
 
-<!-- v1.12.0 - unit 13 (חורבן גלות ותקוה) - ALL 13 UNITS -->
+<!-- v1.13.0 - phase 3: smart search + chat (free mode + optional OpenAI key) -->
