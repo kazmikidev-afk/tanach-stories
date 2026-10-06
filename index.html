@@ -64,6 +64,11 @@ a{color:var(--accent2)}
 .chatinput{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line,#e5e0d8)}
 .chatinput input{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line,#e5e0d8);font-size:1rem;background:var(--bg,#fff);color:inherit}
 .chatinput button{padding:10px 16px;border-radius:12px;border:0;background:var(--accent,#6b4fbb);color:#fff;font-size:1rem;cursor:pointer}
+.chatinput button.mic{padding:10px 12px;font-size:1.15rem}
+.chatinput button.mic.listening{background:#c0392b;animation:micpulse 1.1s infinite}
+.chatinput button.mic.speaking{background:#1e8449}
+@keyframes micpulse{0%{box-shadow:0 0 0 0 rgba(192,57,43,.45)}70%{box-shadow:0 0 0 14px rgba(192,57,43,0)}100%{box-shadow:0 0 0 0 rgba(192,57,43,0)}}
+#voicestate{font-size:.82rem;opacity:.78;padding:4px 12px 0;min-height:1.1em}
 .chatsettings{padding:8px 12px;border-bottom:1px solid var(--line,#e5e0d8);font-size:.8rem;color:var(--dim,#8a8577)}
 .chatsettings input{width:100%;margin-top:6px;padding:8px;border-radius:10px;border:1px solid var(--line,#e5e0d8);font-size:.85rem;background:var(--bg,#fff);color:inherit;direction:ltr;text-align:left}
 .chatsettings .row{display:flex;gap:6px;margin-top:6px}
@@ -94,8 +99,10 @@ a{color:var(--accent2)}
 </div>
 <div class="chatsettings" id="chatsettings" hidden></div>
 <div class="chatlog" id="chatlog"></div>
+<div id="voicestate"></div>
 <div class="chatinput">
-  <input id="chatin" placeholder="שאלו שאלה על סיפורי התנ״ך..." onkeydown="if(event.key==='Enter')chatSend()">
+  <button id="micbtn" class="mic" onclick="toggleVoice()" aria-label="שיחה קולית" title="שיחה קולית">🎤</button>
+  <input id="chatin" placeholder="או הקלידו שאלה על סיפורי התנ״ך..." onkeydown="if(event.key==='Enter')chatSend()">
   <button onclick="chatSend()">שליחה</button>
 </div>
 </div>
@@ -421,6 +428,52 @@ function speakStory(st){if(!synth){alert("הדפדפן הזה לא תומך בה
 parts.forEach((t,i)=>{const u=new SpeechSynthesisUtterance(t);u.lang="he-IL";if(v)u.voice=v;u.rate=rate;u.onend=()=>{if(i===parts.length-1){speaking=false;updPlayer()}};synth.speak(u)});speaking=true;paused=false;updPlayer()}
 function updPlayer(){const b=$("playBtn");if(!b)return;b.textContent=speaking&&!paused?"⏸ השהה":"▶ הקראה";const st=$("pState");if(st)st.textContent=speaking?(paused?"מושהה":"מקריא..."):"";}
 function cycleRate(){let r=parseFloat(localStorage.getItem("tsr-rate")||"0.95");r=r>=1.2?0.8:r>=1?1.2:1;localStorage.setItem("tsr-rate",r);const b=$("rateBtn");if(b)b.textContent="מהירות "+r;return r}
+/* ===== VOICE CHAT ===== */
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+var voiceMode=false,rec=null,recActive=false,speakingAnswer=false,voiceFinal="";
+function updMic(){var b=$("micbtn");if(!b)return;
+b.classList.toggle("listening",recActive);b.classList.toggle("speaking",speakingAnswer);
+b.textContent=speakingAnswer?"\u{1F50A}":(recActive?"\u{1F399}\u{FE0F}":"\u{1F3A4}");
+var st=$("voicestate");if(!st)return;
+if(!SR){st.textContent=""}
+else if(speakingAnswer)st.textContent="מדבר... 🔊"
+else if(recActive)st.textContent="מקשיב... דברו! 🎤"
+else if(voiceMode)st.textContent=""
+else st.textContent="טיפ: לחצו על 🎤 ופשוט דברו - בלי להקליד"}
+function toggleVoice(){
+if(!SR){chatLog.push({me:false,text:"הדפדפן הזה עדיין לא תומך בשיחה קולית. באנדרואיד ובמחשב זה עובד בכרום, ובאייפון בספארי העדכני. בינתיים אפשר להקליד 😊"});renderChat();return}
+if(voiceMode){stopVoice()}else{voiceMode=true;if(synth)synth.cancel();startListening()}}
+function stopVoice(){voiceMode=false;if(rec){try{rec.onend=null;rec.stop()}catch(e){}}recActive=false;speakingAnswer=false;if(synth)synth.cancel();updMic()}
+function startListening(){
+if(!voiceMode||!SR)return;
+if(rec){try{rec.onend=null;rec.stop()}catch(e){}}
+rec=new SR();rec.lang="he-IL";rec.interimResults=true;rec.continuous=false;voiceFinal="";
+rec.onresult=function(ev){var interim="";
+for(var i=ev.resultIndex;i<ev.results.length;i++){var tr=ev.results[i][0].transcript;if(ev.results[i].isFinal)voiceFinal+=tr;else interim+=tr}
+var inp=$("chatin");if(inp)inp.value=(voiceFinal+interim).trim()};
+rec.onend=function(){recActive=false;rec=null;var q=voiceFinal.trim();updMic();
+if(!voiceMode)return;
+if(q){var inp=$("chatin");if(inp)inp.value=q;chatSend()}
+else setTimeout(function(){if(voiceMode&&!speakingAnswer)startListening()},300)};
+rec.onerror=function(ev){recActive=false;
+if(ev.error==="not-allowed"||ev.error==="service-not-allowed"){voiceMode=false;chatLog.push({me:false,text:"כדי לדבר איתי צריך לאשר גישה למיקרופון 🎤 - לוחצים על אפשר/Allow כשהדפדפן שואל. אם נחסם, פותחים את הגדרות האתר בדפדפן ומאפשרים מיקרופון, ואז מנסים שוב."});renderChat()}
+else if(ev.error==="network"){chatLog.push({me:false,text:"זיהוי הדיבור צריך חיבור לאינטרנט. נסו שוב בעוד רגע."});renderChat()}
+else if(ev.error==="audio-capture"){voiceMode=false;chatLog.push({me:false,text:"לא מצאתי מיקרופון פעיל במכשיר. בודקים שאין אפליקציה אחרת שתופסת את המיקרופון, ומנסים שוב."});renderChat()}
+updMic()};
+try{rec.start();recActive=true}catch(e){recActive=false}
+updMic()}
+var heVoiceWarned=false;
+function maybeSpeakAnswer(text){
+if(!voiceMode||!synth||!text)return;
+stopSpeak();speakingAnswer=true;
+var clean=text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/gu,"").replace(/\*/g,"");
+var v=heVoice();
+if(!v&&!heVoiceWarned){heVoiceWarned=true;chatLog.push({me:false,text:"שימו לב: לא מצאתי קול עברי מותקן במכשיר, ולכן ההקראה עלולה להישמע לא טבעית. כדי להפעיל קול עברי: באנדרואיד - הגדרות, שפה וקלט, המרת טקסט לדיבור, ובוחרים בקול Google בעברית (או מתקינים את שירותי הדיבור של Google). באייפון - הגדרות, נגישות, תוכן מדובר, קולות, עברית, ומורידים קול (למשל כרמל). אחרי ההתקנה חוזרים לאפליקציה וזה עובד."});renderChat()}
+var rate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
+var u=new SpeechSynthesisUtterance(clean);u.lang="he-IL";if(v)u.voice=v;u.rate=rate;
+u.onend=function(){speakingAnswer=false;updMic();if(voiceMode)setTimeout(function(){if(voiceMode)startListening()},450)};
+u.onerror=function(){speakingAnswer=false;updMic();if(voiceMode)setTimeout(function(){if(voiceMode)startListening()},450)};
+synth.speak(u);updMic()}
 /* ===== VIEWS ===== */
 const app=$("app");
 function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
@@ -476,8 +529,8 @@ function wordsOf(t){return toks(t).map(stem).filter(function(w){return w.length>
 function searchStories(q){var ts=wordsOf(q);if(!ts.length)return[];var out=[];UNITS.forEach(function(u){u.stories.forEach(function(s){var head=wordsOf(s.title+" "+(s.topics||[]).join(" ")+" "+(s.characters||[]).join(" "));var body=wordsOf(s.body.join(" "));var extra=wordsOf(s.summary+" "+(s.lesson||"")+" "+(s.rashi||[]).map(function(r){return r.ref+" "+r.quote+" "+r.explain}).join(" "));var sc=0;ts.forEach(function(t){head.forEach(function(w){if(w===t)sc+=8;else if(w.indexOf(t)===0&&t.length>2)sc+=5});extra.forEach(function(w){if(w===t)sc+=3;else if(w.indexOf(t)===0&&t.length>2)sc+=2});body.forEach(function(w){if(w===t)sc+=1;else if(w.indexOf(t)===0&&t.length>3)sc+=0.5})});if(sc>0)out.push([u,s,sc])})});out.sort(function(a,b){return b[2]-a[2]});return out}
 // --- chat UI ---
 var chatLog=[];
-function openChat(){$("chatsheet").hidden=false;renderChat();var i=$("chatin");if(i)i.focus()}
-function closeChat(){$("chatsheet").hidden=true}
+function openChat(){$("chatsheet").hidden=false;renderChat();updMic();var i=$("chatin");if(i)i.focus()}
+function closeChat(){stopVoice();$("chatsheet").hidden=true}
 function chatModeTxt(){var p=provider();if(activeKey())return p==="gemini"?"מצב שיחה חכמה (Gemini - חינם)":"מצב שיחה חכמה (OpenAI)";return "מצב חיפוש חכם באפליקציה - חינם"}
 function renderChat(){var log=$("chatlog");if(!log)return;var h="";
 if(!chatLog.length)h+='<div class="msg bot">שלום! אפשר לשאול אותי על כל סיפור באפליקציה - למשל: מה קרה ליוסף? מי הייתה דבורה? מה הלקח מדוד וגליית?</div>';
@@ -510,6 +563,8 @@ var r2=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",h
 if(!r2.ok){var e2=await r2.json().catch(function(){return{}});var err2=new Error(r2.status+" "+((e2.error&&e2.error.message)||""));err2.status=r2.status;throw err2}
 var d2=await r2.json();return{text:d2.choices[0].message.content,refs:refsOf(m)}}
 async function chatSend(){var i=$("chatin");var q=(i.value||"").trim();if(!q)return;i.value="";
+if(rec){try{rec.onend=null;rec.stop()}catch(e){}recActive=false}
+if(speakingAnswer){if(synth)synth.cancel();speakingAnswer=false}updMic();
 chatLog.push({me:true,text:q});renderChat();
 var tp=document.createElement("div");tp.className="typing";tp.id="typing";tp.textContent="כותב תשובה...";$("chatlog").appendChild(tp);$("chatlog").scrollTop=$("chatlog").scrollHeight;
 try{var ans;if(activeKey()){ans=await askLLM(q)}else{await new Promise(function(r){setTimeout(r,250)});ans=composeFree(q)}
@@ -519,7 +574,7 @@ if(st===400||st===401||st===403)msg="המפתח לא תקין או פג תוקף
 else if(st===429)msg="חרגתם ממכסת החינם לדקה או ליום. נסו שוב בעוד דקה - או עברו בינתיים לחיפוש החכם (מוחקים את המפתח ב-⚙️).";
 else msg="משהו השתבש בשיחה ("+(e.message||"שגיאת רשת")+"). נסו שוב, או בדקו את החיבור לאינטרנט.";
 chatLog.push({me:false,text:msg})}
-var t=$("typing");if(t)t.remove();renderChat()}
+var t=$("typing");if(t)t.remove();renderChat();if(chatLog.length)maybeSpeakAnswer(chatLog[chatLog.length-1].text)}
 function toggleSettings(){var s=$("chatsettings");s.hidden=!s.hidden;if(s.hidden)return;
 var p=provider();var key=activeKey();
 var h='<b>שיחה חכמה בשפה טבעית מלאה</b><br>בחרו שירות והזינו מפתח. האפליקציה שומרת את המפתח באחסון המקומי של הדפדפן במכשיר הזה, ושולחת אותו רק בבקשות לשירות ה-AI שבחרתם.<div class="row"><button onclick="setProvider(\'gemini\')"'+(p==="gemini"?' style="font-weight:700"':'')+'>Gemini - חינם ✨</button><button onclick="setProvider(\'openai\')"'+(p==="openai"?' style="font-weight:700"':'')+'>OpenAI</button></div>';
@@ -535,4 +590,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.14.0 - phase 3: smart search + chat + Gemini free-tier LLM mode (user key, on-device) -->
+<!-- v1.15.0 - voice conversation mode: Hebrew STT auto-send + spoken answers -->
