@@ -563,14 +563,21 @@ if(s.lesson)t+="\n\n💡 מה לומדים מזה? "+s.lesson;
 if(s.rashi&&s.rashi.length)t+='\n\n📜 ורש"י על '+s.rashi[0].ref+" אומר: "+s.rashi[0].quote+" "+s.rashi[0].explain;
 if(m.length>1)t+="\n\nקשור גם: "+m.slice(1,3).map(function(x){return x[1].title}).join(", ");
 return{text:t,refs:refsOf(m.slice(0,3))}}
+var GEMINI_MODELS=["gemini-3.8-flash","gemini-2.5-flash-lite","gemini-2.0-flash"];
 async function askLLM(q){var key=activeKey(),prov=provider();var m=searchStories(q).slice(0,3);
 var ctx=m.map(function(x){var u=x[0],s=x[1];return "יחידה "+u.id+" ("+u.title+"), סיפור מס' "+s.n+": "+s.title+" ("+s.book+" "+s.chapters+")\n"+s.body.join("\n")+(s.lesson?"\nלקח: "+s.lesson:"")+((s.rashi&&s.rashi.length)?'\nרש"י על '+s.rashi[0].ref+": "+s.rashi[0].quote+" - "+s.rashi[0].explain:"")}).join("\n\n---\n\n");
 var sys='אתה ספרן ידידותי באפליקציית סיפורי תנ"ך למשפחה עם ילדים בגילאי 5-13. ענה בעברית פשוטה, חמה וקצרה (עד 5 משפטים). השתמש רק בקטעי הסיפורים המצורפים - אל תמציא פרטים. אם התשובה לא נמצאת בקטעים, אמר שאין על זה סיפור באפליקציה והצע את הסיפור הכי קרוב. בסוף כל תשובה הוסף שורה: "המקור: ספר ופרקים, סיפור מס׳ X".';
 if(prov==="gemini"){
 var contents=chatLog.slice(-6).map(function(mm){return{role:mm.me?"user":"model",parts:[{text:mm.text}]}});
 contents.push({role:"user",parts:[{text:"קטעי סיפורים מהאפליקציה:\n"+ctx+"\n\nהשאלה: "+q}]});
-var r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:contents,generationConfig:{temperature:0.4,maxOutputTokens:500}})});
-if(!r.ok){var e=await r.json().catch(function(){return{}});var msg=(e.error&&e.error.message)||"";var err=new Error(r.status+" "+msg);err.status=r.status;throw err}
+var body=JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:contents,generationConfig:{temperature:0.4,maxOutputTokens:500}});
+var r=null,mi=0;
+for(mi=0;mi<GEMINI_MODELS.length;mi++){
+r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODELS[mi]+":generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:body});
+if(r.ok)break;
+if(r.status===404&&mi<GEMINI_MODELS.length-1)continue;
+var e=await r.json().catch(function(){return{}});var msg=(e.error&&e.error.message)||"";var err=new Error(r.status+" "+msg);err.status=r.status;throw err}
+if(!r.ok){var e2g=await r.json().catch(function(){return{}});var errg=new Error("404 "+((e2g.error&&e2g.error.message)||"model unavailable"));errg.status=404;throw errg}
 var d=await r.json();var txt=((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("");
 if(!txt)throw new Error("empty");
 return{text:txt,refs:refsOf(m)}}
@@ -607,4 +614,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.15.1 - voice mode: Android mic watchdog + feedback fix -->
+<!-- v1.15.2 - gemini model update: 3.8-flash + fallback chain (2.5-flash retired) -->
