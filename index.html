@@ -84,6 +84,11 @@ a{color:var(--accent2)}
 .typing{align-self:flex-end;color:var(--dim,#8a8577);font-size:.85rem;padding:4px 12px}
 .snips{font-size:.8rem;color:var(--dim,#8a8577);margin-top:2px}
 
+#recMeter{position:fixed;top:0;left:0;right:0;z-index:60;background:#fff3f3;border-bottom:1px solid #e5b8b8;padding:8px 12px;font-size:.8rem;display:flex;align-items:center;gap:8px}
+#recMeter .dot{width:10px;height:10px;border-radius:50%;background:#e05252;flex:none;animation:blinkdot 1s infinite}
+@keyframes blinkdot{50%{opacity:.25}}
+#recMeter .bar{flex:1;height:6px;background:#f0d9d9;border-radius:3px;overflow:hidden}
+#recMeter .bar>i{display:block;height:100%;width:0;background:#e05252;transition:width .12s}
 </style>
 </head>
 <body>
@@ -106,6 +111,7 @@ a{color:var(--accent2)}
   <button class="iconbtn" onclick="toggleSettings()" aria-label="הגדרות">⚙️</button>
 </div>
 <div class="chatsettings" id="chatsettings" hidden></div>
+<div id="recMeter" hidden><span class="dot"></span><span>מקליט - דברו עכשיו 🎤</span><div class="bar"><i id="recMeterFill"></i></div></div>
 <div class="chatlog" id="chatlog"></div>
 <div id="voicestate"></div>
 <div class="chatinput">
@@ -457,9 +463,9 @@ catch(fe){r=null}
 clearTimeout(tm);
 if(r&&r.ok){got=true;break}
 if(!r||r.status===503){if(att<2){if(statusEl)statusEl.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
-if((r.status===404||r.status===429)&&mi<GEMINI_TTS_MODELS.length-1)break;
+if(r.status===404||r.status===429)break;
 var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}}
-if(!got){var eg=new Error((r?r.status:503)+" unavailable");eg.status=r?r.status:503;throw eg}
+if(!got){var eg=new Error("מודלי ה-AI לא זמינים כרגע");eg.status=r?r.status:503;throw eg}
 var d=await r.json();var steps=d.steps||[];var b64=null;
 for(var i=steps.length-1;i>=0&&!b64;i--){var cc=steps[i].content||[];for(var j=cc.length-1;j>=0;j--){if(cc[j].type==="audio"&&cc[j].data){b64=cc[j].data;break}}}
 if(!b64)throw new Error("no audio");
@@ -501,6 +507,7 @@ function updMic(){var b=$("micbtn");if(!b)return;
 b.classList.toggle("listening",recActive||recording);b.classList.toggle("speaking",speakingAnswer);
 b.textContent=transcribing?"\u{23F3}":speakingAnswer?"\u{1F50A}":(recording?"\u{23FA}\u{FE0F}":(recActive?"\u{1F399}\u{FE0F}":"\u{1F3A4}"));
 var qm=$("qaMic");if(qm){qm.classList.toggle("listening",recording);qm.textContent=transcribing?"\u{23F3}":recording?"\u{23FA}\u{FE0F}":"\u{1F3A4}"}
+var rmt=$("recMeter");if(rmt)rmt.hidden=!recording;
 var qs2=$("qaStatus");if(qs2&&recTarget==="story"){if(transcribing)qs2.textContent="מתמלל...";else if(recording)qs2.textContent="מקליט... דברו, ובסוף לוחצים שוב על 🎤";else if(qs2.textContent==="מתמלל..."||qs2.textContent.indexOf("מקליט")===0)qs2.textContent=""}
 var st=$("voicestate");if(!st)return;
 if(transcribing)st.textContent="מתמלל..."
@@ -564,6 +571,8 @@ function sleepMs(ms){return new Promise(function(r){setTimeout(r,ms)})}
 var mediaRec=null,recChunks=[],recStream=null,recording=false,transcribing=false,srDead=false,discardRec=false,recTimer=null,recTarget="chat";
 function geminiKey(){return localStorage.getItem("ts_gemini_key")}
 function recorderSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
+var REC_MIME_CANDS=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/aac","audio/ogg;codecs=opus"];
+function pickRecMime(){if(!window.MediaRecorder||!MediaRecorder.isTypeSupported)return "";for(var i=0;i<REC_MIME_CANDS.length;i++){try{if(MediaRecorder.isTypeSupported(REC_MIME_CANDS[i]))return REC_MIME_CANDS[i]}catch(e){}}return ""}
 function srDeadStored(){return localStorage.getItem("ts_sr_dead")==="1"}
 function useRecorder(){return voiceMode&&(!SR||srDead||srDeadStored())}
 async function startRecorder(){
@@ -572,14 +581,17 @@ if(!recorderSupported()){chatLog.push({me:false,text:"הדפדפן לא תומך
 try{recStream=await navigator.mediaDevices.getUserMedia({audio:true})}
 catch(e){chatLog.push({me:false,text:"לא הצלחתי לפתוח את המיקרופון - לאשר גישה דרך המנעול בשורת הכתובת ← הרשאות ← מיקרופון ← אפשר, ולנסות שוב."});renderChat();return}
 recChunks=[];discardRec=false;
-try{mediaRec=new MediaRecorder(recStream)}catch(e2){try{mediaRec=new MediaRecorder(recStream,{mimeType:"audio/webm"})}catch(e3){chatLog.push({me:false,text:"ההקלטה לא נפתחה ("+(e3.message||e3)+")"});renderChat();return}}
+var rmime=pickRecMime();try{mediaRec=rmime?new MediaRecorder(recStream,{mimeType:rmime}):new MediaRecorder(recStream)}catch(e2){try{mediaRec=new MediaRecorder(recStream)}catch(e3){chatLog.push({me:false,text:"ההקלטה לא נפתחה ("+(e3.message||e3)+")"});renderChat();return}}
 mediaRec.ondataavailable=function(ev){if(ev.data&&ev.data.size)recChunks.push(ev.data)};
 mediaRec.onstop=function(){onRecordingDone()};
 try{mediaRec.start()}catch(e4){chatLog.push({me:false,text:"ההקלטה לא התחילה - נסו שוב."});renderChat();return}
-recording=true;
+recording=true;startRecMeter(recStream);
 clearTimeout(recTimer);recTimer=setTimeout(function(){if(recording)stopRecorder()},30000);
 updMic()}
-function stopRecorder(){clearTimeout(recTimer);if(mediaRec&&mediaRec.state!=="inactive"){try{mediaRec.stop()}catch(e){}}
+var recCtx=null,recAnalyser=null,recMeterRaf=0,recPeak=0;
+function startRecMeter(stream){recPeak=0;try{var AC=window.AudioContext||window.webkitAudioContext;recCtx=new AC();var src=recCtx.createMediaStreamSource(stream);recAnalyser=recCtx.createAnalyser();recAnalyser.fftSize=2048;src.connect(recAnalyser);var buf=new Float32Array(recAnalyser.fftSize);(function loop(){if(!recording)return;recAnalyser.getFloatTimeDomainData(buf);var s=0;for(var i=0;i<buf.length;i++)s+=buf[i]*buf[i];var rms=Math.sqrt(s/buf.length);if(rms>recPeak)recPeak=rms;var f=$("recMeterFill");if(f)f.style.width=Math.min(100,Math.round(rms*300))+"%";recMeterRaf=requestAnimationFrame(loop)})()}catch(e){}}
+function stopRecMeter(){cancelAnimationFrame(recMeterRaf);try{if(recCtx)recCtx.close()}catch(e){}recCtx=null;recAnalyser=null}
+function stopRecorder(){clearTimeout(recTimer);stopRecMeter();if(mediaRec&&mediaRec.state!=="inactive"){try{mediaRec.stop()}catch(e){}}
 if(recStream){recStream.getTracks().forEach(function(t){t.stop()});recStream=null}
 recording=false;updMic()}
 function blobToWavB64(blob){return new Promise(function(res,rej){
@@ -590,12 +602,13 @@ ac.decodeAudioData(fr.result,function(buf){
 try{
 var sr=buf.sampleRate;var n=Math.min(buf.length,sr*60);var ch=buf.getChannelData(0);
 var pcm=new Int16Array(n);for(var i=0;i<n;i++){var v=Math.max(-1,Math.min(1,ch[i]));pcm[i]=v<0?v*0x8000:v*0x7FFF}
+var sum=0;for(var ri=0;ri<n;ri++){var rv=ch[ri];sum+=rv*rv}var rms=Math.sqrt(sum/(n||1));
 var ab=new ArrayBuffer(44+n*2);var dv=new DataView(ab);
 function ws(o,st){for(var j=0;j<st.length;j++)dv.setUint8(o+j,st.charCodeAt(j))}
 ws(0,"RIFF");dv.setUint32(4,36+n*2,true);ws(8,"WAVE");ws(12,"fmt ");dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,sr,true);dv.setUint32(28,sr*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);ws(36,"data");dv.setUint32(40,n*2,true);
 new Int16Array(ab,44).set(pcm);
 var bytes=new Uint8Array(ab);var bin="";for(var k=0;k<bytes.length;k+=8192){bin+=String.fromCharCode.apply(null,bytes.subarray(k,k+8192))}
-if(ac.close)ac.close();res(btoa(bin))}catch(ex){rej(ex)}},function(err){rej(err)})}catch(ex0){rej(ex0)}};
+if(ac.close)ac.close();res({b64:btoa(bin),rms:rms})}catch(ex){rej(ex)}},function(err){rej(new Error("decode-failed"))})}catch(ex0){rej(ex0)}};
 fr.onerror=function(){rej(new Error("read-failed"))};fr.readAsArrayBuffer(blob)})}
 async function transcribeAudio(b64){
 var key=geminiKey();
@@ -609,31 +622,37 @@ catch(fe){r=null}
 clearTimeout(tm);
 if(r&&r.ok){got=true;break}
 if(!r||r.status===503){if(att<2){var st5=$("voicestate");if(st5)st5.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
-if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)break;
+if(r.status===404||r.status===429)break;
 var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}}
-if(!got){var eg=new Error(r?r.status+" unavailable":"503 unavailable");eg.status=r?r.status:503;throw eg}
+if(!got){var eg=new Error("מודלי ה-AI לא זמינים כרגע");eg.status=r?r.status:503;throw eg}
 var d=await r.json();
 return ((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("").trim()}
+function recSay(text){if(recTarget==="story"){var qs=$("qaStatus");if(qs){qs.textContent=text;return}}chatLog.push({me:false,text:text});renderChat()}
 async function onRecordingDone(){
 if(discardRec){discardRec=false;recChunks=[];return}
 var chunks=recChunks;recChunks=[];
 if(!chunks.length)return;
 var blob=new Blob(chunks,{type:(mediaRec&&mediaRec.mimeType)||"audio/webm"});
-if(blob.size<800){if(voiceMode){chatLog.push({me:false,text:"לא שמעתי כלום - לוחצים על 🎤 ומנסים שוב, קרוב למיקרופון."});renderChat()}return}
+window.__recDiag={mime:(mediaRec&&mediaRec.mimeType)||"default",size:blob.size,peak:Math.round(recPeak*1000)/1000};
+if(blob.size<800){recSay("לא נקלט שום קול - המיקרופון לא העביר דבר. בודקים שאין אפליקציה אחרת שתופסת את המיקרופון, ומנסים שוב.");return}
 transcribing=true;updMic();
 try{
-var b64=await blobToWavB64(blob);
-var tr=await transcribeAudio(b64);
+var conv=await blobToWavB64(blob);
+window.__recDiag.rms=Math.round(conv.rms*10000)/10000;
+if(conv.rms<0.002){transcribing=false;updMic();recSay("ההקלטה שקטה לגמרי - המיקרופון לא קלט קול בפועל (רמת השמע אפסית). בודקים שהמיקרופון לא מושתק ומתקרבים למכשיר, ומנסים שוב.");return}
+var tr=await transcribeAudio(conv.b64);
 transcribing=false;updMic();
 if(tr){if(recTarget==="story"){recTarget="chat";var qi2=$("qaIn");if(qi2)qi2.value=tr;storyQuestion(tr)}else{var inp=$("chatin");if(inp)inp.value=tr;chatSend()}}
-else if(voiceMode){chatLog.push({me:false,text:"לא זיהיתי מילים בהקלטה - לוחצים על 🎤 ומנסים שוב."});renderChat()}}
+else recSay("ההקלטה התקבלה והשמע תקין, אבל לא זוהו מילים ברורות - מנסים שוב, לאט וקרוב למיקרופון.")}
 catch(e){transcribing=false;updMic();
 var st=e.status||0;var msg;
-if(st===400||st===401||st===403)msg="מפתח ה-Gemini לא תקין או פג תוקף - אפשר לעדכן ב-⚙️.";
+if(e.message==="decode-failed")msg="קובץ ההקלטה לא נקרא במכשיר הזה (פורמט לא נתמך) - מנסים שוב; אם נמשך, מקלידים עם מיקרופון המקלדת.";
+else if(st===400||st===401||st===403)msg="מפתח ה-Gemini לא תקין או פג תוקף - אפשר לעדכן ב-⚙️.";
 else if(st===429)msg="מכסת התמלול לדקה או ליום נגמרה. נסו שוב בעוד דקה, או הקלידו (אפשר עם מיקרופון המקלדת).";
+else if(st===404)msg="מודל התמלול הוחלף או אינו זמין כרגע - נסו שוב בעוד כמה דקות.";
 else if(st===503)msg="שירות התמלול בעומס זמני גם אחרי כמה נסיונות - נסו שוב בעוד דקה-שתיים, או הקלידו (אפשר עם מיקרופון המקלדת).";
 else msg="התמלול נכשל ("+(e.message||"שגיאת רשת")+"). בודקים אינטרנט ומנסים שוב.";
-chatLog.push({me:false,text:msg});renderChat()}}
+recSay(msg)}}
 var heVoiceWarned=false;
 function maybeSpeakAnswer(text){
 if(!voiceMode||!synth||!text)return;
@@ -656,9 +675,9 @@ catch(fe){r=null}
 clearTimeout(tm);
 if(r&&r.ok){got=true;break}
 if(!r||r.status===503){if(att<2){if(statusEl)statusEl.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
-if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)break;
+if(r.status===404||r.status===429)break;
 var e=await r.json().catch(function(){return{}});var err=new Error(r.status+" "+((e.error&&e.error.message)||""));err.status=r.status;throw err}}
-if(!got){var eg=new Error((r?r.status:503)+" unavailable");eg.status=r?r.status:503;throw eg}
+if(!got){var eg=new Error("מודלי ה-AI לא זמינים כרגע");eg.status=r?r.status:503;throw eg}
 var d=await r.json();
 return ((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("").trim()}
 function resumeBtnHtml(){return '<div style="margin-top:8px"><button class="main" onclick="resumeRead()">▶ המשך בסיפור</button></div>'}
@@ -687,6 +706,7 @@ speakQA(ans)}
 catch(e){var st=e.status||0;var msg;
 if(st===400||st===401||st===403)msg="מפתח ה-Gemini לא תקין או פג תוקף - אפשר לעדכן ב-⚙️ בצ'אט.";
 else if(st===429)msg="מכסת החינם נגמרה לדקה או ליום - נסו שוב בעוד דקה, או הקלידו בצ'אט הראשי.";
+else if(st===404)msg="מודלי ה-AI הוחלפו או אינם זמינים כרגע - נסו שוב בעוד כמה דקות.";
 else if(st===503)msg="Gemini בעומס זמני גם אחרי כמה נסיונות - נסו שוב בעוד כמה דקות.";
 else msg="משהו השתבש ("+(e.message||"שגיאת רשת")+"). נסו שוב.";
 if(qs)qs.textContent=msg}}
@@ -701,6 +721,8 @@ out.push(pm.state==="granted"?"✅ הרשאת מיקרופון נתונה לאת
 if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
 try{var stm=await navigator.mediaDevices.getUserMedia({audio:true});stm.getTracks().forEach(function(t){t.stop()});out.push("✅ המיקרופון עצמו נגיש")}
 catch(e2){out.push("❌ המיקרופון לא נגיש לדפדפן ("+(e2.name||e2)+")")}}
+out.push("🎙️ פורמט הקלטה שנבחר: "+(pickRecMime()||"ברירת מחדל של הדפדפן"));
+if(window.__recDiag)out.push("📊 הקלטה אחרונה: פורמט "+__recDiag.mime+", "+__recDiag.size+" בייט, שיא שמע "+__recDiag.peak+(__recDiag.rms!==undefined?", RMS "+__recDiag.rms:""));
 if(SR){var got={audio:false,sound:false,result:false,err:""};
 var probe=new SR();probe.lang="he-IL";probe.interimResults=true;
 probe.onaudiostart=function(){got.audio=true};probe.onsoundstart=function(){got.sound=true};
@@ -793,7 +815,7 @@ if(s.lesson)t+="\n\n💡 מה לומדים מזה? "+s.lesson;
 if(s.rashi&&s.rashi.length)t+='\n\n📜 ורש"י על '+s.rashi[0].ref+" אומר: "+s.rashi[0].quote+" "+s.rashi[0].explain;
 if(m.length>1)t+="\n\nקשור גם: "+m.slice(1,3).map(function(x){return x[1].title}).join(", ");
 return{text:t,refs:refsOf(m.slice(0,3))}}
-var GEMINI_MODELS=["gemini-3.8-flash","gemini-2.5-flash-lite","gemini-2.0-flash"];
+var GEMINI_MODELS=["gemini-3.8-flash","gemini-3.5-flash-lite","gemini-3.1-flash-lite","gemini-2.5-flash-lite"];
 async function askLLM(q){var key=activeKey(),prov=provider();var m=searchStories(q).slice(0,3);
 var ctx=m.map(function(x){var u=x[0],s=x[1];return "יחידה "+u.id+" ("+u.title+"), סיפור מס' "+s.n+": "+s.title+" ("+s.book+" "+s.chapters+")\n"+s.body.join("\n")+(s.lesson?"\nלקח: "+s.lesson:"")+((s.rashi&&s.rashi.length)?'\nרש"י על '+s.rashi[0].ref+": "+s.rashi[0].quote+" - "+s.rashi[0].explain:"")}).join("\n\n---\n\n");
 var sys='אתה ספרן ידידותי באפליקציית סיפורי תנ"ך למשפחה עם ילדים בגילאי 5-13. ענה בעברית פשוטה, חמה וקצרה (עד 5 משפטים). השתמש רק בקטעי הסיפורים המצורפים - אל תמציא פרטים. אם התשובה לא נמצאת בקטעים, אמר שאין על זה סיפור באפליקציה והצע את הסיפור הכי קרוב. בסוף כל תשובה הוסף שורה: "המקור: ספר ופרקים, סיפור מס׳ X".';
@@ -810,7 +832,7 @@ catch(fe){r=null}
 clearTimeout(tm);
 if(r&&r.ok){got=true;break}
 if(!r||r.status===503){if(att<2){var tp5=$("typing");if(tp5)tp5.textContent="עומס זמני, מנסה שוב...";await sleepMs(1500*(att+1));continue}break}
-if((r.status===404||r.status===429)&&mi<GEMINI_MODELS.length-1)break;
+if(r.status===404||r.status===429)break;
 var e=await r.json().catch(function(){return{}});var msg=(e.error&&e.error.message)||"";var err=new Error(r.status+" "+msg);err.status=r.status;throw err}}
 if(!got){var e2g=new Error((r?r.status:503)+" unavailable after retries");e2g.status=r?r.status:503;throw e2g}
 var d=await r.json();var txt=((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("");
@@ -832,6 +854,7 @@ chatLog.push({me:false,text:ans.text,refs:ans.refs})}
 catch(e){var st=e.status||0;var msg;
 if(st===400||st===401||st===403)msg="המפתח לא תקין או פג תוקף. אפשר לעדכן אותו למעלה בלחצן על ⚙️ - או למחוק אותו ולהשתמש בחיפוש החכם החינמי.";
 else if(st===429)msg="חרגתם ממכסת החינם לדקה או ליום. נסו שוב בעוד דקה - או עברו בינתיים לחיפוש החכם (מוחקים את המפתח ב-⚙️).";
+else if(st===404)msg="מודלי ה-AI הוחלפו או אינם זמינים כרגע - נסו שוב בעוד כמה דקות (החיפוש החכם עובד תמיד).";
 else if(st===503)msg="שירות ה-AI בעומס זמני גם אחרי כמה נסיונות. נסו שוב בעוד דקה-שתיים - או הקלידו את השאלה והחיפוש החכם יענה גם בלי השירות.";
 else msg="משהו השתבש בשיחה ("+(e.message||"שגיאת רשת")+"). נסו שוב, או בדקו את החיבור לאינטרנט.";
 chatLog.push({me:false,text:msg})}
@@ -853,4 +876,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.17.1 - wake lock during reading + clean resume after screen lock; smarter Hebrew voice pick; optional Gemini cloud TTS with quota marking + device fallback; 2 garbled biblical quotes fixed (Ex 32:1, Dan 6:28) -->
+<!-- v1.17.2 - model chain: only live models (2.0-flash retired), 404 always walks + clean Hebrew terminal error; recorder: MIME probing, live volume meter, silence/RMS failure diagnostics, story-path error visibility -->
