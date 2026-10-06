@@ -491,6 +491,31 @@ var u=new SpeechSynthesisUtterance(clean);u.lang="he-IL";if(v)u.voice=v;u.rate=r
 u.onend=function(){speakingAnswer=false;updMic();if(voiceMode)setTimeout(function(){if(voiceMode)startListening()},450)};
 u.onerror=function(){speakingAnswer=false;updMic();if(voiceMode)setTimeout(function(){if(voiceMode)startListening()},450)};
 synth.speak(u);updMic()}
+async function runMicDiag(){
+var s=$("chatsettings");if(s)s.hidden=true;
+chatLog.push({me:false,text:"מריץ בדיקת מיקרופון... דברו כמה מילים ברור במשך כ-6 שניות 🎤"});renderChat();
+var out=[];
+out.push(navigator.onLine?"✅ חיבור אינטרנט פעיל":"❌ אין חיבור אינטרנט - זיהוי דיבור עובד דרך הענן");
+out.push(SR?"✅ הדפדפן תומך בזיהוי דיבור":"❌ הדפדפן לא תומך בזיהוי דיבור");
+try{var pm=await navigator.permissions.query({name:"microphone"});
+out.push(pm.state==="granted"?"✅ הרשאת מיקרופון נתונה לאתר":pm.state==="denied"?"❌ הרשאת מיקרופון חסומה - לוחצים על המנעול בשורת הכתובת ← הרשאות ← מיקרופון ← אפשר":"⚠️ הרשאת מיקרופון עדיין לא ניתנה לאתר")}catch(e){}
+if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+try{var stm=await navigator.mediaDevices.getUserMedia({audio:true});stm.getTracks().forEach(function(t){t.stop()});out.push("✅ המיקרופון עצמו נגיש")}
+catch(e2){out.push("❌ המיקרופון לא נגיש לדפדפן ("+(e2.name||e2)+")")}}
+if(SR){var got={audio:false,sound:false,result:false,err:""};
+var probe=new SR();probe.lang="he-IL";probe.interimResults=true;
+probe.onaudiostart=function(){got.audio=true};probe.onsoundstart=function(){got.sound=true};
+probe.onresult=function(){got.result=true};probe.onerror=function(ev){got.err=ev.error||"?"};
+try{probe.start()}catch(e3){got.err="start-failed"}
+await new Promise(function(r){setTimeout(r,6000)});
+try{probe.onend=null;probe.stop()}catch(e4){}
+if(got.result)out.push("✅ זיהוי הדיבור שומע ומזהה מילים - אמור לעבוד!");
+else if(got.sound)out.push("⚠️ מגיע קול אבל לא זוהו מילים - לדבר קרוב וברור, או לבדוק שהמיקרופון לא מכוסה");
+else if(got.audio)out.push("⚠️ הזיהוי התחיל אבל לא הגיע קול - בעיית מיקרופון או הרשאה");
+else if(got.err==="not-allowed"||got.err==="service-not-allowed")out.push("❌ שירות הזיהוי חסום - לאשר מיקרופון דרך המנעול בשורת הכתובת");
+else out.push("❌ שירות זיהוי הדיבור לא מגיב בכלל. באנדרואיד זה כמעט תמיד אפליקציית Google: פותחים את חנות Play, מחפשים Google ומעדכנים (וגם שירותי Google Play). אחרי העדכון סוגרים את כרום לגמרי ופותחים מחדש."+(got.err?" ("+got.err+")":""))}
+out.push(heVoice()?"✅ קול עברי מותקן להקראת התשובות":"⚠️ לא נמצא קול עברי מותקן - התשובות יוקראו אבל עלולות להישמע לא טבעיות");
+chatLog.push({me:false,text:"תוצאות בדיקה:\n"+out.join("\n")+"\n\nטיפ שעובד תמיד: לוחצים על שורת הכתיבה, משתמשים במיקרופון של המקלדת עצמה (Gboard) להקלדה קולית - ואז שליחה."});renderChat()}
 /* ===== VIEWS ===== */
 const app=$("app");
 function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
@@ -604,7 +629,7 @@ var p=provider();var key=activeKey();
 var h='<b>שיחה חכמה בשפה טבעית מלאה</b><br>בחרו שירות והזינו מפתח. האפליקציה שומרת את המפתח באחסון המקומי של הדפדפן במכשיר הזה, ושולחת אותו רק בבקשות לשירות ה-AI שבחרתם.<div class="row"><button onclick="setProvider(\'gemini\')"'+(p==="gemini"?' style="font-weight:700"':'')+'>Gemini - חינם ✨</button><button onclick="setProvider(\'openai\')"'+(p==="openai"?' style="font-weight:700"':'')+'>OpenAI</button></div>';
 if(p==="gemini")h+='<div style="margin-top:6px">איך משיגים מפתח Gemini חינמי (דקה, בלי כרטיס אשראי): נכנסים ל-<b>aistudio.google.com</b>, מתחברים עם חשבון Google, לוחצים Get API key ואז Create API key - ומדביקים כאן. המכסה החינמית משתנה מדי פעם לפי המודל (המספר המדויק מופיע ב-AI Studio). אם היא נגמרת, האפליקציה עוברת אוטומטית למודל חינמי אחר - והחיפוש החכם באפליקציה תמיד עובד בלי מפתח.</div>';
 else h+='<div style="margin-top:6px">מפתח OpenAI (gpt-4o-mini) - בתשלום זעיר של שברי סנט לשאלה, יורד מהחשבון שלכם.</div>';
-h+='<input id="oaikey" type="password" placeholder="'+(p==="gemini"?"מפתח Gemini (AIza...)":"מפתח OpenAI (sk-...)")+'" autocomplete="off"><div class="row"><button onclick="saveKey()">שמירה</button><button onclick="clearKey()">מחיקת מפתח</button></div>';
+h+='<div class="row" style="margin-top:6px"><button onclick="runMicDiag()">🎤 בדיקת מיקרופון</button></div><input id="oaikey" type="password" placeholder="'+(p==="gemini"?"מפתח Gemini (AIza...)":"מפתח OpenAI (sk-...)")+'" autocomplete="off"><div class="row"><button onclick="saveKey()">שמירה</button><button onclick="clearKey()">מחיקת מפתח</button></div>';
 s.innerHTML=h;var ki=$("oaikey");if(ki)ki.value=key?"••••••••":""}
 function setProvider(p){localStorage.setItem("ts_llm_provider",p);var s=$("chatsettings");s.hidden=true;toggleSettings();renderChat()}
 function saveKey(){var v=$("oaikey").value.trim();if(v&&v!=="••••••••"){localStorage.setItem(provider()==="gemini"?"ts_gemini_key":"ts_openai_key",v);$("oaikey").value="••••••••"}renderChat()}
@@ -614,4 +639,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.15.3 - gemini: fall back across models on quota (429) too; honest quota copy -->
+<!-- v1.15.4 - mic diagnostic + Gboard degradation tip (pending deploy) -->
