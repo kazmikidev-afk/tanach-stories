@@ -464,7 +464,9 @@ function route(){const h=location.hash;let m=h.match(/#u(\d+)\/(.+)/);if(m)retur
 window.addEventListener("hashchange",route);
 applyDark();route();
 // ===== שלב 3: חיפוש חכם + שיחה =====
-var LLM_ON=false; // יופעל אחרי אישור המשתמש לחיבור OpenAI בתשלום
+var LLM_ON=true;
+function provider(){return localStorage.getItem("ts_llm_provider")||"gemini"}
+function activeKey(){return provider()==="gemini"?localStorage.getItem("ts_gemini_key"):localStorage.getItem("ts_openai_key")}
 function normT(t){return (t||"").replace(/[\u0591-\u05C7]/g,"").replace(/ך/g,"כ").replace(/ם/g,"מ").replace(/ן/g,"נ").replace(/ף/g,"פ").replace(/ץ/g,"צ").toLowerCase()}
 function toks(q){return normT(q).split(/[^א-תa-z0-9]+/).filter(function(w){return w.length>1})}
 function stem(w){var p=["וש","כש","בש","לש","מש","שה","שב","של","וכ","ול","וב","ומ","וה","ה","ב","ל","כ","מ","ש","ו"];for(var i=0;i<p.length;i++){if(w.indexOf(p[i])===0&&w.length-p[i].length>1)return w.slice(p[i].length)}return w}
@@ -476,7 +478,7 @@ function searchStories(q){var ts=wordsOf(q);if(!ts.length)return[];var out=[];UN
 var chatLog=[];
 function openChat(){$("chatsheet").hidden=false;renderChat();var i=$("chatin");if(i)i.focus()}
 function closeChat(){$("chatsheet").hidden=true}
-function chatModeTxt(){if(!LLM_ON)return "מצב חיפוש חכם באפליקציה - חינם";return localStorage.getItem("ts_openai_key")?"מצב שיחה חכמה (OpenAI)":"מצב חיפוש חכם באפליקציה"}
+function chatModeTxt(){var p=provider();if(activeKey())return p==="gemini"?"מצב שיחה חכמה (Gemini - חינם)":"מצב שיחה חכמה (OpenAI)";return "מצב חיפוש חכם באפליקציה - חינם"}
 function renderChat(){var log=$("chatlog");if(!log)return;var h="";
 if(!chatLog.length)h+='<div class="msg bot">שלום! אפשר לשאול אותי על כל סיפור באפליקציה - למשל: מה קרה ליוסף? מי הייתה דבורה? מה הלקח מדוד וגליית?</div>';
 chatLog.forEach(function(m){h+='<div class="msg '+(m.me?"me":"bot")+'">'+esc(m.text);if(m.refs&&m.refs.length){h+='<div class="refs">';m.refs.forEach(function(r){h+='<button onclick="closeChat();goStory('+r.u+',\''+r.s+'\')">📖 '+esc(r.label)+'</button>'});h+='</div>'}h+='</div>'});
@@ -491,31 +493,46 @@ if(s.lesson)t+="\n\n💡 מה לומדים מזה? "+s.lesson;
 if(s.rashi&&s.rashi.length)t+='\n\n📜 ורש"י על '+s.rashi[0].ref+" אומר: "+s.rashi[0].quote+" "+s.rashi[0].explain;
 if(m.length>1)t+="\n\nקשור גם: "+m.slice(1,3).map(function(x){return x[1].title}).join(", ");
 return{text:t,refs:refsOf(m.slice(0,3))}}
-async function askLLM(q){var key=localStorage.getItem("ts_openai_key");var m=searchStories(q).slice(0,3);
+async function askLLM(q){var key=activeKey(),prov=provider();var m=searchStories(q).slice(0,3);
 var ctx=m.map(function(x){var u=x[0],s=x[1];return "יחידה "+u.id+" ("+u.title+"), סיפור מס' "+s.n+": "+s.title+" ("+s.book+" "+s.chapters+")\n"+s.body.join("\n")+(s.lesson?"\nלקח: "+s.lesson:"")+((s.rashi&&s.rashi.length)?'\nרש"י על '+s.rashi[0].ref+": "+s.rashi[0].quote+" - "+s.rashi[0].explain:"")}).join("\n\n---\n\n");
 var sys='אתה ספרן ידידותי באפליקציית סיפורי תנ"ך למשפחה עם ילדים בגילאי 5-13. ענה בעברית פשוטה, חמה וקצרה (עד 5 משפטים). השתמש רק בקטעי הסיפורים המצורפים - אל תמציא פרטים. אם התשובה לא נמצאת בקטעים, אמר שאין על זה סיפור באפליקציה והצע את הסיפור הכי קרוב. בסוף כל תשובה הוסף שורה: "המקור: ספר ופרקים, סיפור מס׳ X".';
+if(prov==="gemini"){
+var contents=chatLog.slice(-6).map(function(mm){return{role:mm.me?"user":"model",parts:[{text:mm.text}]}});
+contents.push({role:"user",parts:[{text:"קטעי סיפורים מהאפליקציה:\n"+ctx+"\n\nהשאלה: "+q}]});
+var r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system_instruction:{parts:[{text:sys}]},contents:contents,generationConfig:{temperature:0.4,maxOutputTokens:500}})});
+if(!r.ok){var e=await r.json().catch(function(){return{}});var msg=(e.error&&e.error.message)||"";var err=new Error(r.status+" "+msg);err.status=r.status;throw err}
+var d=await r.json();var txt=((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("");
+if(!txt)throw new Error("empty");
+return{text:txt,refs:refsOf(m)}}
 var hist=chatLog.slice(-6).map(function(mm){return{role:mm.me?"user":"assistant",content:mm.text}});
 var msgs=[{role:"system",content:sys}].concat(hist).concat([{role:"user",content:"קטעי סיפורים מהאפליקציה:\n"+ctx+"\n\nהשאלה: "+q}]);
-var r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:"gpt-4o-mini",messages:msgs,temperature:0.4,max_tokens:400})});
-if(!r.ok){var e=await r.json().catch(function(){return{}});throw new Error(r.status+" "+((e.error&&e.error.message)||""))}
-var d=await r.json();return{text:d.choices[0].message.content,refs:refsOf(m)}}
+var r2=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:"gpt-4o-mini",messages:msgs,temperature:0.4,max_tokens:400})});
+if(!r2.ok){var e2=await r2.json().catch(function(){return{}});var err2=new Error(r2.status+" "+((e2.error&&e2.error.message)||""));err2.status=r2.status;throw err2}
+var d2=await r2.json();return{text:d2.choices[0].message.content,refs:refsOf(m)}}
 async function chatSend(){var i=$("chatin");var q=(i.value||"").trim();if(!q)return;i.value="";
 chatLog.push({me:true,text:q});renderChat();
 var tp=document.createElement("div");tp.className="typing";tp.id="typing";tp.textContent="כותב תשובה...";$("chatlog").appendChild(tp);$("chatlog").scrollTop=$("chatlog").scrollHeight;
-try{var ans;if(LLM_ON&&localStorage.getItem("ts_openai_key")){ans=await askLLM(q)}else{await new Promise(function(r){setTimeout(r,250)});ans=composeFree(q)}
+try{var ans;if(activeKey()){ans=await askLLM(q)}else{await new Promise(function(r){setTimeout(r,250)});ans=composeFree(q)}
 chatLog.push({me:false,text:ans.text,refs:ans.refs})}
-catch(e){chatLog.push({me:false,text:e.message&&e.message.indexOf("401")===0?"מפתח ה-OpenAI לא תקין או פג תוקף. אפשר לעדכן אותו למעלה בלחצן על ⚙️, או למחוק אותו ולהשתמש בחיפוש החכם החינמי.":"משהו השתבש בשיחה ("+(e.message||"שגיאת רשת")+"). נסו שוב, או בדקו את החיבור לאינטרנט."})}
+catch(e){var st=e.status||0;var msg;
+if(st===400||st===401||st===403)msg="המפתח לא תקין או פג תוקף. אפשר לעדכן אותו למעלה בלחצן על ⚙️ - או למחוק אותו ולהשתמש בחיפוש החכם החינמי.";
+else if(st===429)msg="חרגתם ממכסת החינם לדקה או ליום. נסו שוב בעוד דקה - או עברו בינתיים לחיפוש החכם (מוחקים את המפתח ב-⚙️).";
+else msg="משהו השתבש בשיחה ("+(e.message||"שגיאת רשת")+"). נסו שוב, או בדקו את החיבור לאינטרנט.";
+chatLog.push({me:false,text:msg})}
 var t=$("typing");if(t)t.remove();renderChat()}
 function toggleSettings(){var s=$("chatsettings");s.hidden=!s.hidden;if(s.hidden)return;
-if(!LLM_ON){s.innerHTML='<b>שיחה חכמה בשפה טבעית מלאה (דרך OpenAI) - בדרך אליכם.</b> התכונה בנויה ומוכנה; היא תופעל אחרי שתאשרו חיבור של מפתח OpenAI משלכם (עלות זעירה של שברי סנט לשאלה). בינתיים - החיפוש החכם עובד חינם לגמרי.';return}
-var ki=localStorage.getItem("ts_openai_key")?"••••••••":"";
-s.innerHTML='יש מפתח OpenAI? הזינו אותו כאן והשיחה תהיה בשפה טבעית לגמרי. המפתח נשמר <b>רק במכשיר הזה</b> (localStorage) ולא נשלח לשום מקום חוץ מ-OpenAI. השאלות יורדות מחשבון ה-OpenAI שלכם (gpt-4o-mini - שברי סנט לשאלה). בלי מפתח - החיפוש החכם עובד חינם.<input id="oaikey" type="password" placeholder="sk-..." autocomplete="off"><div class="row"><button onclick="saveKey()">שמירה</button><button onclick="clearKey()">מחיקת מפתח</button></div>';
-$("oaikey").value=ki}
-function saveKey(){var v=$("oaikey").value.trim();if(v&&v!=="••••••••"){localStorage.setItem("ts_openai_key",v);$("oaikey").value="••••••••"}renderChat()}
-function clearKey(){localStorage.removeItem("ts_openai_key");$("oaikey").value="";renderChat()}
+var p=provider();var key=activeKey();
+var h='<b>שיחה חכמה בשפה טבעית מלאה</b><br>בחרו שירות והזינו מפתח. האפליקציה שומרת את המפתח באחסון המקומי של הדפדפן במכשיר הזה, ושולחת אותו רק בבקשות לשירות ה-AI שבחרתם.<div class="row"><button onclick="setProvider(\'gemini\')"'+(p==="gemini"?' style="font-weight:700"':'')+'>Gemini - חינם ✨</button><button onclick="setProvider(\'openai\')"'+(p==="openai"?' style="font-weight:700"':'')+'>OpenAI</button></div>';
+if(p==="gemini")h+='<div style="margin-top:6px">איך משיגים מפתח Gemini חינמי (דקה, בלי כרטיס אשראי): נכנסים ל-<b>aistudio.google.com</b>, מתחברים עם חשבון Google, לוחצים Get API key ואז Create API key - ומדביקים כאן. המכסה החינמית: מאות שאלות ביום.</div>';
+else h+='<div style="margin-top:6px">מפתח OpenAI (gpt-4o-mini) - בתשלום זעיר של שברי סנט לשאלה, יורד מהחשבון שלכם.</div>';
+h+='<input id="oaikey" type="password" placeholder="'+(p==="gemini"?"מפתח Gemini (AIza...)":"מפתח OpenAI (sk-...)")+'" autocomplete="off"><div class="row"><button onclick="saveKey()">שמירה</button><button onclick="clearKey()">מחיקת מפתח</button></div>';
+s.innerHTML=h;var ki=$("oaikey");if(ki)ki.value=key?"••••••••":""}
+function setProvider(p){localStorage.setItem("ts_llm_provider",p);var s=$("chatsettings");s.hidden=true;toggleSettings();renderChat()}
+function saveKey(){var v=$("oaikey").value.trim();if(v&&v!=="••••••••"){localStorage.setItem(provider()==="gemini"?"ts_gemini_key":"ts_openai_key",v);$("oaikey").value="••••••••"}renderChat()}
+function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key":"ts_openai_key");$("oaikey").value="";renderChat()}
 
 </script>
 </body>
 </html>
 
-<!-- v1.13.0 - phase 3: smart search + chat (free mode + optional OpenAI key) -->
+<!-- v1.14.0 - phase 3: smart search + chat + Gemini free-tier LLM mode (user key, on-device) -->
