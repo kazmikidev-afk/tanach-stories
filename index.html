@@ -63,7 +63,7 @@ a{color:var(--accent2)}
 .msg .refs{margin-top:8px;display:flex;flex-direction:column;gap:6px}
 .msg .refs button{text-align:start;border:1px solid var(--line,#e5e0d8);background:var(--bg,#fff);border-radius:10px;padding:6px 10px;font-size:.85rem;cursor:pointer}
 .chatinput{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line,#e5e0d8)}
-.chatinput input{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line,#e5e0d8);font-size:1rem;background:var(--bg,#fff);color:inherit}
+.chatinput input{min-width:0;flex:1;padding:10px;border-radius:12px;border:1px solid var(--line,#e5e0d8);font-size:1rem;background:var(--bg,#fff);color:inherit}
 .chatinput button{padding:10px 16px;border-radius:12px;border:0;background:var(--accent,#6b4fbb);color:#fff;font-size:1rem;cursor:pointer}
 .chatinput button.mic{padding:10px 12px;font-size:1.15rem}
 .chatinput button.mic.listening{background:#c0392b;animation:micpulse 1.1s infinite}
@@ -73,12 +73,12 @@ a{color:var(--accent2)}
 .reading{background:rgba(107,79,187,.14);border-radius:8px;transition:background .3s}
 .qa{margin-top:10px;border-top:1px solid var(--line,#e5e0d8);padding-top:10px}
 .qarow{display:flex;gap:8px}
-.qarow input{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line,#e5e0d8);font-size:1rem;background:var(--bg,#fff);color:inherit}
+.qarow input{min-width:0;flex:1;padding:10px;border-radius:12px;border:1px solid var(--line,#e5e0d8);font-size:1rem;background:var(--bg,#fff);color:inherit}
 .qarow button{padding:10px 14px;border-radius:12px;border:0;background:var(--accent,#6b4fbb);color:#fff;font-size:1rem;cursor:pointer}
 .qarow button.mic{padding:10px 12px;font-size:1.1rem}
 .qarow button.mic.listening{background:#c0392b;animation:micpulse 1.1s infinite}
 #qaOut{margin-top:8px}
-.chatsettings{padding:8px 12px;border-bottom:1px solid var(--line,#e5e0d8);font-size:.8rem;color:var(--dim,#8a8577)}
+.chatsettings{max-height:55dvh;overflow:auto;padding:8px 12px;border-bottom:1px solid var(--line,#e5e0d8);font-size:.8rem;color:var(--dim,#8a8577)}
 .chatsettings input{width:100%;margin-top:6px;padding:8px;border-radius:10px;border:1px solid var(--line,#e5e0d8);font-size:.85rem;background:var(--bg,#fff);color:inherit;direction:ltr;text-align:left}
 .chatsettings .row{display:flex;gap:6px;margin-top:6px}
 .chatsettings .row button{flex:1;padding:6px;border-radius:8px;border:1px solid var(--line,#e5e0d8);background:var(--card,#f5f2ec);cursor:pointer;font-size:.8rem}
@@ -86,6 +86,7 @@ a{color:var(--accent2)}
 .snips{font-size:.8rem;color:var(--dim,#8a8577);margin-top:2px}
 
 #recMeter{position:fixed;top:0;left:0;right:0;z-index:60;background:#fff3f3;border-bottom:1px solid #e5b8b8;padding:8px 12px;font-size:.8rem;display:flex;align-items:center;gap:8px}
+#recMeter[hidden]{display:none}
 #recMeter .dot{width:10px;height:10px;border-radius:50%;background:#e05252;flex:none;animation:blinkdot 1s infinite}
 @keyframes blinkdot{50%{opacity:.25}}
 #recMeter .bar{flex:1;height:6px;background:#f0d9d9;border-radius:3px;overflow:hidden}
@@ -343,19 +344,19 @@ let speaking=false,paused=false;
 function heVoice(){if(!synth)return null;var vs=synth.getVoices().filter(function(v){return /^he([_-]|$)/i.test(v.lang)||/hebrew|עברית/i.test(v.name)});if(!vs.length)return null;function sc(v){return (/google|online|natural|premium|enhanced|neural/i.test(v.name)?4:0)+(!v.localService?2:0)+(v.default?1:0)}return vs.slice().sort(function(a,b){return sc(b)-sc(a)})[0]}
 if(synth)synth.onvoiceschanged=()=>{};
 var rSegs=[],rIdx=0,rActive=false,rPaused=false,rStory=null,curStory=null,rGen=0;
-function stopSpeak(){rGen++;stopVoicePreview();clearBoundaryTimers();if(synth)synth.cancel();if(cloudAudio){try{cloudAudio.pause()}catch(e){}}stopAnswerAudio();rActive=false;rPaused=false;rHideActive=false;relWake();updPlayer()}
+function stopSpeak(){rGen++;rResume=null;stopVoicePreview();clearBoundaryTimers();if(synth)synth.cancel();if(cloudAudio){try{cloudAudio.pause()}catch(e){}}stopAnswerAudio();rActive=false;rPaused=false;rHideActive=false;relWake();updPlayer()}
 function buildSegs(st){var segs=[{t:st.title+".",el:null}];st.body.forEach(function(b,i){segs.push({t:b,el:"bpara"+i})});if(st.lesson)segs.push({t:"מה לומדים? "+st.lesson,el:"blesson"});(st.rashi||[]).forEach(function(r,i){segs.push({t:'רש"י אומר, על '+r.ref+": "+r.quote+" "+r.explain,el:"brashi"+i})});return segs}
 function hlSeg(el){document.querySelectorAll(".reading").forEach(function(x){x.classList.remove("reading")});if(el){var n=$(el);if(n){n.classList.add("reading");n.scrollIntoView({block:"center",behavior:"smooth"})}}}
 /* === screen wake lock (reading-scoped, pattern from guitar coach) === */
 var rWakeLock=null,rHideActive=false;
-async function reqWake(){if(!rActive)return false;if(!('wakeLock' in navigator))return false;if(document.visibilityState!=='visible')return false;try{if(!rWakeLock||rWakeLock.released){rWakeLock=await navigator.wakeLock.request('screen');rWakeLock.addEventListener('release',function(){rWakeLock=null},{once:true})}return true}catch(e){return false}}
+async function reqWake(){if(!rActive)return false;if(!('wakeLock' in navigator))return false;if(document.visibilityState!=='visible')return false;try{if(!rWakeLock||rWakeLock.released){var lock=await navigator.wakeLock.request('screen');if(!rActive){lock.release();return false}rWakeLock=lock;lock.addEventListener('release',function(){if(rWakeLock===lock)rWakeLock=null},{once:true})}return true}catch(e){return false}}
 function relWake(){try{if(rWakeLock&&!rWakeLock.released)rWakeLock.release()}catch(e){}rWakeLock=null}
 document.addEventListener('visibilitychange',function(){
-if(document.visibilityState==='hidden'){rHideActive=rActive;if(rActive){rGen++;if(synth)synth.cancel();if(cloudAudio){try{cloudAudio.pause()}catch(e){}}}}
-else{if(rActive)reqWake();if(rHideActive&&rStory&&rSegs.length){rHideActive=false;rPaused=false;rActive=true;speakSeg(rIdx)}}});
+if(document.visibilityState==='hidden'){var wasActive=rActive;if(wasActive)pauseRead();rHideActive=wasActive}
+else{if(rActive)reqWake();if(rHideActive&&rStory&&rSegs.length){rHideActive=false;resumeRead()}}});
 /* === cloud TTS (Gemini, opt-in) === */
 var GEMINI_TTS_MODELS=["gemini-3.8-flash-tts","gemini-3.8-flash-lite-tts"];
-var cloudAudio=null,cloudFailed=false,ttsCache={};
+var cloudAudio=null,cloudFailed=false,ttsCache={},rResume=null;
 // Featured studio voices and descriptions verified against Google's speech-generation docs.
 var TTS_VOICES=[{id:"Kore",name:"קורה",label:"יציב ובטוח"},{id:"Puck",name:"פאק",label:"שמח וקצבי"},{id:"Leda",name:"לדה",label:"צעיר וקליל"},{id:"Aoede",name:"אאודה",label:"קליל ונינוח"},{id:"Achird",name:"אקירד",label:"ידידותי"},{id:"Sulafat",name:"סולאפת",label:"חם"},{id:"Achernar",name:"אכרנר",label:"רך"},{id:"Zephyr",name:"זפיר",label:"בהיר"}];
 var previewAudio=null,previewGen=0,previewCache={},answerGen=0;
@@ -413,16 +414,17 @@ function scheduleBoundaries(bi,g){clearBoundaryTimers();var bt=rBatches[bi];if(!
 var dur=cloudAudio.duration;if(!dur||!isFinite(dur))return;
 var cur=cloudAudio.currentTime||0;
 for(var k=1;k<bt.idxs.length;k++){(function(segI){var off=batchOffsetSec(bt,segI,dur);if(off<=cur)return;
-boundaryTimers.push(setTimeout(function(){if(!rActive||g!==rGen)return;rIdx=segI;updPlayer();hlSeg(rSegs[segI].el)},Math.max(0,(off-cur)*1000)))})(bt.idxs[k])}}
-function prefetchBatch(bi){if(!rBatches[bi])return;var bt=rBatches[bi],voice=ttsVoice(),ck=ttsCacheKey(bt.t,voice);if(ttsCache[ck]||ttsInflight[ck])return;ttsInflight[ck]=true;
-fetchTtsAudio(bt.t,null,voice).then(function(u){ttsCache[ck]=u}).catch(function(e){}).then(function(){delete ttsInflight[ck]})}
+boundaryTimers.push(setTimeout(function(){if(!rActive||g!==rGen)return;rIdx=segI;updPlayer();hlSeg(rSegs[segI].el)},Math.max(0,(off-cur)*1000/cloudAudio.playbackRate)))})(bt.idxs[k])}}
+function getBatchAudio(bt,statusEl,voice){var ck=ttsCacheKey(bt.t,voice);if(ttsCache[ck])return Promise.resolve(ttsCache[ck]);if(ttsInflight[ck])return ttsInflight[ck];var pending=fetchTtsAudio(bt.t,statusEl,voice).then(function(u){ttsCache[ck]=u;return u}).finally(function(){if(ttsInflight[ck]===pending)delete ttsInflight[ck]});ttsInflight[ck]=pending;return pending}
+function prefetchBatch(bi){if(!rBatches[bi])return;getBatchAudio(rBatches[bi],null,ttsVoice()).catch(function(){})}
 function playCloudBatch(bi,g,startSeg){if(!rActive||g!==rGen)return;var bt=rBatches[bi];if(!bt)return;
 rIdx=(startSeg!==undefined?startSeg:bt.idxs[0]);updPlayer();hlSeg(rSegs[rIdx].el);
 var go=function(url){if(!rActive||g!==rGen)return;
 if(!cloudAudio)cloudAudio=new Audio();
-cloudAudio.src=url;
-cloudAudio.onloadedmetadata=function(){var bt2=rBatches[bi];if(!bt2)return;
-if(startSeg!==undefined&&startSeg>bt2.idxs[0]){var off=batchOffsetSec(bt2,startSeg,cloudAudio.duration);if(isFinite(off)&&off>0)cloudAudio.currentTime=off}
+cloudAudio.src=url;cloudAudio._batchKey=ttsCacheKey(bt.t);cloudAudio.playbackRate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
+cloudAudio.onloadedmetadata=function(){if(!rActive||g!==rGen)return;var bt2=rBatches[bi];if(!bt2)return;
+var saved=rResume;if(saved&&saved.key===ttsCacheKey(bt2.t)){cloudAudio.currentTime=Math.min(saved.time,cloudAudio.duration||saved.time);rResume=null}
+else if(startSeg!==undefined&&startSeg>bt2.idxs[0]){var off=batchOffsetSec(bt2,startSeg,cloudAudio.duration);if(isFinite(off)&&off>0)cloudAudio.currentTime=off}
 scheduleBoundaries(bi,g)};
 cloudAudio.onended=function(){clearBoundaryTimers();if(!rActive||g!==rGen)return;
 if(bi+1<rBatches.length)playCloudBatch(bi+1,g);else{rActive=false;rStory=null;relWake();updPlayer();hlSeg(null)}};
@@ -433,15 +435,14 @@ prefetchBatch(bi+1);prefetchBatch(bi+2)};
 var voice=ttsVoice(),ck=ttsCacheKey(bt.t,voice),url=ttsCache[ck];
 if(url){go(url);return}
 var st=$("pState");if(st)st.textContent="מכין קריאת ענן...";
-ttsInflight[ck]=true;
-fetchTtsAudio(bt.t,st,voice).then(function(u2){ttsCache[ck]=u2;delete ttsInflight[ck];go(u2)}).catch(function(e){delete ttsInflight[ck];
-cloudFailed=true;if(rActive&&g===rGen){var st2=$("pState");if(st2)st2.textContent="קריאת הענן לא זמינה כרגע - עובר לקול המכשיר";speakDeviceSeg(rIdx,g)}})}
+getBatchAudio(bt,st,voice).then(go).catch(function(e){
+if(rActive&&g===rGen){cloudFailed=true;var st2=$("pState");if(st2)st2.textContent="קריאת הענן לא זמינה כרגע - עובר לקול המכשיר";speakDeviceSeg(rIdx,g)}})}
 function speakSeg(i){if(!rActive)return;rIdx=i;var g=++rGen;updPlayer();hlSeg(rSegs[i].el);
 if(cloudTtsOn()&&!cloudFailed){playCloudBatch(segBatch(i),g,i);return}
 speakDeviceSeg(i,g)}
-function startRead(st){if(!synth&&!cloudTtsOn()){alert("הדפדפן הזה לא תומך בהקראה");return}stopSpeak();rStory=st;rSegs=buildSegs(st);rBatches=buildBatches(rSegs);rActive=true;rPaused=false;rIdx=0;cloudFailed=false;ttsInflight={};reqWake();speakSeg(0)}
-function pauseRead(){if(!rActive)return;rGen++;rPaused=true;rActive=false;clearBoundaryTimers();if(synth)synth.cancel();if(cloudAudio){try{cloudAudio.pause()}catch(e){}}relWake();updPlayer()}
-function resumeRead(){if(!rStory||!rSegs.length)return;rPaused=false;rActive=true;reqWake();speakSeg(rIdx)}
+function startRead(st){if(!synth&&!cloudTtsOn()){alert("הדפדפן הזה לא תומך בהקראה");return}stopSpeak();rStory=st;rSegs=buildSegs(st);rBatches=buildBatches(rSegs);rActive=true;rPaused=false;rIdx=0;cloudFailed=false;reqWake();speakSeg(0)}
+function pauseRead(){if(!rActive)return;if(cloudAudio&&cloudTtsOn()&&!cloudFailed){var bt=rBatches[segBatch(rIdx)];if(bt&&cloudAudio._batchKey===ttsCacheKey(bt.t))rResume={key:ttsCacheKey(bt.t),time:cloudAudio.currentTime||0}}rGen++;rPaused=true;rActive=false;clearBoundaryTimers();if(synth)synth.cancel();if(cloudAudio){try{cloudAudio.pause()}catch(e){}}relWake();updPlayer()}
+function resumeRead(){stopAnswerAudio();if(!rStory||!rSegs.length)return;rPaused=false;rActive=true;reqWake();speakSeg(rIdx)}
 function updPlayer(){const b=$("playBtn");if(!b)return;b.textContent=rActive?"⏸ השהה":"▶ הקראה";const st=$("pState");if(!st)return;st.textContent=rActive?("מקריא... קטע "+(rIdx+1)+"/"+rSegs.length):(rPaused&&rSegs.length)?("מושהה בקטע "+(rIdx+1)+"/"+rSegs.length):""}
 function cycleRate(){let r=parseFloat(localStorage.getItem("tsr-rate")||"0.95");r=r>=1.2?0.8:r>=1?1.2:1;localStorage.setItem("tsr-rate",r);const b=$("rateBtn");if(b)b.textContent="מהירות "+r;return r}
 /* ===== VOICE CHAT ===== */
@@ -471,7 +472,7 @@ if(!SR){voiceMode=false;chatLog.push({me:false,text:"הדפדפן הזה עדי�
 startListening();return}
 if(useRecorder()){if(recording){stopRecorder()}else{startRecorder()}return}
 stopVoice()}
-function stopVoice(){clearWatch();voiceMode=false;srDead=false;if(rec){try{rec.onend=null;rec.stop()}catch(e){}}recActive=false;if(recording){discardRec=true;stopRecorder()}speakingAnswer=false;if(synth)synth.cancel();updMic()}
+function stopVoice(){stopAnswerAudio();recSession++;clearWatch();voiceMode=false;srDead=false;if(rec){try{rec.onend=null;rec.stop()}catch(e){}}recActive=false;if(recording){discardRec=true;stopRecorder()}speakingAnswer=false;if(synth)synth.cancel();updMic()}
 var listenWatch=null,listenGotResult=false,listenRetries=0,voiceInterim="";
 function clearWatch(){if(listenWatch){clearTimeout(listenWatch);listenWatch=null}}
 function micTroubleMsg(){return "המיקרופון נפתח אבל לא הגיע קול. בודקים בבקשה: 1) שהמיקרופון מורשה לאתר - לוחצים על המנעול בשורת הכתובת של כרום ← הרשאות ← מיקרופון ← אפשר; 2) שהאינטרנט פעיל (זיהוי הדיבור עובד דרך הענן); 3) שאפליקציית Google מותקנת ומעודכנת - בלי היא כרום לא מזהה דיבור. אחרי זה לוחצים שוב על 🎤."}
@@ -512,7 +513,7 @@ updMic()}
 },10000);
 updMic()}
 function sleepMs(ms){return new Promise(function(r){setTimeout(r,ms)})}
-var mediaRec=null,recChunks=[],recStream=null,recording=false,transcribing=false,srDead=false,discardRec=false,recTimer=null,recTarget="chat";
+var mediaRec=null,recChunks=[],recStream=null,recording=false,transcribing=false,srDead=false,discardRec=false,recTimer=null,recTarget="chat",recStarting=false,recSession=0;
 function geminiKey(){return localStorage.getItem("ts_gemini_key")}
 function recorderSupported(){return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder)}
 var REC_MIME_CANDS=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/aac","audio/ogg;codecs=opus"];
@@ -520,15 +521,19 @@ function pickRecMime(){if(!window.MediaRecorder||!MediaRecorder.isTypeSupported)
 function srDeadStored(){return localStorage.getItem("ts_sr_dead")==="1"}
 function useRecorder(){return voiceMode&&(!SR||srDead||srDeadStored())}
 async function startRecorder(){
-if(recording||transcribing)return;
-if(!recorderSupported()){chatLog.push({me:false,text:"הדפדפן לא תומך בהקלטה - אפשר להשתמש במיקרופון של המקלדת (Gboard) ואז שליחה."});renderChat();return}
-try{recStream=await navigator.mediaDevices.getUserMedia({audio:true})}
-catch(e){chatLog.push({me:false,text:"לא הצלחתי לפתוח את המיקרופון - לאשר גישה דרך המנעול בשורת הכתובת ← הרשאות ← מיקרופון ← אפשר, ולנסות שוב."});renderChat();return}
+if(recording||transcribing||recStarting)return;
+if(!geminiKey()){recSay("לשאלה קולית צריך מפתח Gemini ב-⚙️ של השיחה. בינתיים אפשר להקליד.");return}
+if(rActive)pauseRead();stopAnswerAudio();
+if(!recorderSupported()){recSay("הדפדפן לא תומך בהקלטה - אפשר להשתמש במיקרופון של המקלדת ואז שליחה.");return}
+recStarting=true;var session=++recSession;
+try{var stream=await navigator.mediaDevices.getUserMedia({audio:true});if(session!==recSession){stream.getTracks().forEach(function(t){t.stop()});return}recStream=stream}
+catch(e){recSay("לא הצלחתי לפתוח את המיקרופון - לאשר גישה דרך המנעול בשורת הכתובת ולנסות שוב.");return}
+finally{recStarting=false}
 recChunks=[];discardRec=false;
-var rmime=pickRecMime();try{mediaRec=rmime?new MediaRecorder(recStream,{mimeType:rmime}):new MediaRecorder(recStream)}catch(e2){try{mediaRec=new MediaRecorder(recStream)}catch(e3){chatLog.push({me:false,text:"ההקלטה לא נפתחה ("+(e3.message||e3)+")"});renderChat();return}}
+var rmime=pickRecMime();try{mediaRec=rmime?new MediaRecorder(recStream,{mimeType:rmime}):new MediaRecorder(recStream)}catch(e2){try{mediaRec=new MediaRecorder(recStream)}catch(e3){stopRecorder();chatLog.push({me:false,text:"ההקלטה לא נפתחה ("+(e3.message||e3)+")"});renderChat();return}}
 mediaRec.ondataavailable=function(ev){if(ev.data&&ev.data.size)recChunks.push(ev.data)};
 mediaRec.onstop=function(){onRecordingDone()};
-try{mediaRec.start()}catch(e4){chatLog.push({me:false,text:"ההקלטה לא התחילה - נסו שוב."});renderChat();return}
+try{mediaRec.start()}catch(e4){stopRecorder();chatLog.push({me:false,text:"ההקלטה לא התחילה - נסו שוב."});renderChat();return}
 recording=true;startRecMeter(recStream);
 clearTimeout(recTimer);recTimer=setTimeout(function(){if(recording)stopRecorder()},30000);
 updMic()}
@@ -561,6 +566,7 @@ var d=await r.json();
 return ((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(function(p){return p.text||""}).join("").trim()}
 function recSay(text){if(recTarget==="story"){var qs=$("qaStatus");if(qs){qs.textContent=text;return}}chatLog.push({me:false,text:text});renderChat()}
 async function onRecordingDone(){
+var session=recSession,target=recTarget;
 if(discardRec){discardRec=false;recChunks=[];return}
 var chunks=recChunks;recChunks=[];
 if(!chunks.length)return;
@@ -573,7 +579,7 @@ try{
 if(recMeterRan&&recPeak<0.01){transcribing=false;updMic();recSay("ההקלטה שקטה לגמרי - המיקרופון לא קלט קול בפועל (רמת השמע אפסית). בודקים שהמיקרופון לא מושתק ומתקרבים למכשיר, ומנסים שוב.");return}
 var b64=await blobToB64(blob);
 var tr=await transcribeAudio(b64,mime);
-transcribing=false;updMic();
+transcribing=false;updMic();if(session!==recSession)return;recTarget=target;
 if(tr){if(recTarget==="story"){recTarget="chat";var qi2=$("qaIn");if(qi2)qi2.value=tr;storyQuestion(tr)}else{var inp=$("chatin");if(inp)inp.value=tr;chatSend()}}
 else recSay("ההקלטה התקבלה והשמע תקין, אבל לא זוהו מילים ברורות - מנסים שוב, לאט וקרוב למיקרופון.")}
 catch(e){transcribing=false;updMic();
@@ -592,7 +598,7 @@ stopSpeak();speakingAnswer=true;
 if(!cloudTtsOn()){var v=heVoice();
 if(!v&&!heVoiceWarned){heVoiceWarned=true;chatLog.push({me:false,text:"שימו לב: לא מצאתי קול עברי מותקן במכשיר, ולכן ההקראה עלולה להישמע לא טבעית. כדי להפעיל קול עברי: באנדרואיד - הגדרות, שפה וקלט, המרת טקסט לדיבור, ובוחרים בקול Google בעברית (או מתקינים את שירותי הדיבור של Google). באייפון - הגדרות, נגישות, תוכן מדובר, קולות, עברית, ומורידים קול (למשל כרמל). אחרי ההתקנה חוזרים לאפליקציה וזה עובד."});renderChat()}
 }
-speakAnswerCloud(text,null,function(){speakingAnswer=false;updMic();if(voiceMode&&!useRecorder())setTimeout(function(){if(voiceMode)startListening()},450)});updMic()}
+speakAnswerCloud(text,null,function(){speakingAnswer=false;updMic();if(voiceMode&&!useRecorder())setTimeout(function(){if(voiceMode)startListening()},450)});speakingAnswer=true;updMic()}
 async function geminiAskStream(key,bodyObj,statusEl,onToken){
 var body=JSON.stringify(bodyObj);var lst=503;
 for(var mi=0;mi<GEMINI_FAST.length;mi++){
@@ -616,15 +622,15 @@ break}}
 var eg=new Error("מודלי ה-AI לא זמינים כרגע");eg.status=lst;throw eg}
 function resumeBtnHtml(){return '<div style="margin-top:8px"><button class="main" onclick="resumeRead()">▶ המשך בסיפור</button></div>'}
 function qaListenBtnHtml(){return '<div style="margin-top:8px"><button onclick="speakQA(lastQaAns)">🔊 הקריאו את התשובה שוב</button></div>'}
-var qaAudio=null,lastQaAns="";
+var qaAudio=null,lastQaAns="",qaGen=0;
 function cleanTtsText(text){return text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/gu,"").replace(/\*/g,"")}
-function stopAnswerAudio(){answerGen++;if(qaAudio){try{qaAudio.pause()}catch(e){}qaAudio=null}}
-function speakAnswerDevice(clean,onend){if(!synth){if(onend)onend();return}
+function stopAnswerAudio(){answerGen++;if(synth)synth.cancel();speakingAnswer=false;updMic();if(qaAudio){try{qaAudio.pause()}catch(e){}qaAudio=null}}
+function speakAnswerDevice(clean,onend){var ag=answerGen;if(!synth){if(onend)onend();return}
 var v=heVoice();var rate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
 var u=new SpeechSynthesisUtterance(clean);u.lang="he-IL";if(v)u.voice=v;u.rate=rate;
-u.onend=function(){if(onend)onend()};u.onerror=function(){if(onend)onend()};
+u.onend=function(){if(ag===answerGen&&onend)onend()};u.onerror=function(){if(ag===answerGen&&onend)onend()};
 synth.speak(u)}
-function speakAnswerCloud(text,statusEl,onend){var clean=cleanTtsText(text);
+function speakAnswerCloud(text,statusEl,onend){if(!text)return;if(rActive)pauseRead();if(recording){discardRec=true;stopRecorder()}var clean=cleanTtsText(text);
 stopAnswerAudio();var ag=answerGen;
 if(cloudTtsOn()){
 if(statusEl)statusEl.textContent="מכין את ההקראה...";
@@ -632,15 +638,15 @@ fetchTtsAudio(clean,statusEl).then(function(url){
 if(ag!==answerGen)return;
 if(statusEl)statusEl.textContent="";
 qaAudio=new Audio();qaAudio.src=url;
-qaAudio.onended=function(){qaAudio=null;if(onend)onend()};
-qaAudio.onerror=function(){qaAudio=null;speakAnswerDevice(clean,onend)};
-qaAudio.play().catch(function(){qaAudio=null;speakAnswerDevice(clean,onend)})}).catch(function(){if(ag!==answerGen)return;if(statusEl)statusEl.textContent="";speakAnswerDevice(clean,onend)});
+qaAudio.onended=function(){if(ag!==answerGen)return;qaAudio=null;if(onend)onend()};
+qaAudio.onerror=function(){if(ag!==answerGen)return;qaAudio=null;speakAnswerDevice(clean,onend)};
+qaAudio.play().catch(function(){if(ag!==answerGen)return;qaAudio=null;speakAnswerDevice(clean,onend)})}).catch(function(){if(ag!==answerGen)return;if(statusEl)statusEl.textContent="";speakAnswerDevice(clean,onend)});
 return}
 speakAnswerDevice(clean,onend)}
 function speakQA(text){speakAnswerCloud(text,$("qaStatus"))}
 function speakChatMsg(i){var m=chatLog[i];if(!m||!m.text)return;speakAnswerCloud(m.text,null)}
 async function storyQuestion(q){
-var s=curStory;if(!s)return;
+q=(q||"").trim();var s=curStory;if(!s||!q)return;pauseRead();stopAnswerAudio();var qg=++qaGen;
 var qs=$("qaStatus"),qo=$("qaOut");
 if(!geminiKey()){
 var f=composeFree(q);
@@ -653,12 +659,13 @@ var ctx="הסיפור: "+s.title+" ("+s.book+" "+s.chapters+")\n"+s.body.join("\
 if(rStory===s&&rSegs[rIdx])ctx+="\nהקטע שבו עצרה ההקראה כשנשאלה השאלה: "+rSegs[rIdx].t;
 var sys='אתה מספר סיפורי תנ"ך לילדים בגילאי 5-13, באמצע הקראה של סיפור. ענה בעברית פשוטה, חמה וקצרה (עד 4 משפטים). קודם חפש את התשובה בטקסט הסיפור המצורף - אם היא שם, ענה ממנו. אם התשובה לא מופיעה בסיפור אבל אתה יודע אותה בוודאות מהתנ"ך - פתח ב"זה לא כתוב בסיפור הזה, אבל..." וענה מהידע שלך על התנ"ך, וציין שזה מהתנ"ך ולא מהסיפור. אם אינך יודע בוודאות - אמר שאתה לא יודע. לעולם אל תנחש ואל תמציא פרטים.';
 try{
-var ans=await geminiAskStream(geminiKey(),{system_instruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:"טקסט הסיפור:\n"+ctx+"\n\nהשאלה: "+q}]}],generationConfig:{temperature:0.4,maxOutputTokens:350}},qs,function(t){var el=$("qaAns");if(el)el.textContent=t;});
+var ans=await geminiAskStream(geminiKey(),{system_instruction:{parts:[{text:sys}]},contents:[{role:"user",parts:[{text:"טקסט הסיפור:\n"+ctx+"\n\nהשאלה: "+q}]}],generationConfig:{temperature:0.4,maxOutputTokens:350}},qs,function(t){if(qg!==qaGen||curStory!==s)return;var el=$("qaAns");if(el)el.textContent=t;});
+if(qg!==qaGen||curStory!==s)return;
 if(!ans)throw new Error("empty");
 if(qs)qs.textContent="";
 lastQaAns=ans;if(qo)qo.innerHTML='<div class="msg me"><b>'+esc(q)+'</b></div><div class="msg bot">'+esc(ans)+'</div>'+qaListenBtnHtml()+resumeBtnHtml();
 speakQA(ans)}
-catch(e){var st=e.status||0;var msg;
+catch(e){if(qg!==qaGen||curStory!==s)return;var st=e.status||0;var msg;
 if(st===400||st===401||st===403)msg="מפתח ה-Gemini לא תקין או פג תוקף - אפשר לעדכן ב-⚙️ בצ'אט.";
 else if(st===429)msg="מכסת החינם נגמרה לדקה או ליום - נסו שוב בעוד דקה, או הקלידו בצ'אט הראשי.";
 else if(st===404)msg="מודלי ה-AI הוחלפו או אינם זמינים כרגע - נסו שוב בעוד כמה דקות.";
@@ -711,11 +718,11 @@ h+='<button class="unit" onclick="goUnit('+u.id+')"><h2>'+u.id+". "+esc(u.title)
 else{h+='<button class="unit soon" disabled><h2>'+u.id+". "+esc(u.title)+'</h2><div class="meta">'+esc(u.book)+' · '+u.planned+' סיפורים <span class="badge soonb">בקרוב</span></div></button>'}});
 app.innerHTML=h;$("q").oninput=e=>viewHome(e.target.value)}
 function viewUnit(uid){const u=UNITS.find(x=>x.id===uid);if(!u)return viewHome();
-let h='<button class="back" onclick="viewHome()">→ חזרה למפה</button><div class="card"><h2 style="color:var(--accent)">'+u.id+". "+esc(u.title)+'</h2><div class="meta" style="color:var(--muted)">'+esc(u.book)+(u.chapters?' '+esc(u.chapters):'')+'</div></div>';
+let h='<button class="back" onclick="goHome()">→ חזרה למפה</button><div class="card"><h2 style="color:var(--accent)">'+u.id+". "+esc(u.title)+'</h2><div class="meta" style="color:var(--muted)">'+esc(u.book)+(u.chapters?' '+esc(u.chapters):'')+'</div></div>';
 u.stories.forEach(s=>{h+='<button class="storybtn" onclick="goStory('+u.id+',\''+s.id+'\')"><span class="num">'+s.n+'</span><span><h3>'+esc(s.title)+'</h3><div class="src">'+esc(s.book)+' '+esc(s.chapters)+' · '+s.ages.map(a=>'<span class="agetag">'+a+'+</span>').join(" ")+'</div></span><span class="tick">'+(read[s.id]?"✅":"")+'</span></button>'});
 app.innerHTML=h;window.scrollTo(0,0)}
-function viewStory(uid,sid){const u=UNITS.find(x=>x.id===uid);const s=u&&u.stories.find(x=>x.id===sid);if(!s)return viewHome();stopSpeak();
-let h='<button class="back" onclick="viewUnit('+uid+')">→ חזרה ליחידה</button><div class="card story"><h2>'+esc(s.title)+'</h2><div class="src">'+esc(s.book)+', פרקים '+esc(s.chapters)+(s.holiday?' · 🗓 '+esc(s.holiday):'')+' · '+s.ages.map(a=>'<span class="agetag">'+a+'+</span>').join(" ")+'</div>';
+function viewStory(uid,sid){qaGen++;lastQaAns="";const u=UNITS.find(x=>x.id===uid);const s=u&&u.stories.find(x=>x.id===sid);if(!s)return viewHome();stopSpeak();
+let h='<button class="back" onclick="goUnit('+uid+')">→ חזרה ליחידה</button><div class="card story"><h2>'+esc(s.title)+'</h2><div class="src">'+esc(s.book)+', פרקים '+esc(s.chapters)+(s.holiday?' · 🗓 '+esc(s.holiday):'')+' · '+s.ages.map(a=>'<span class="agetag">'+a+'+</span>').join(" ")+'</div>';
 if(s.note)h+='<div class="note">⚠️ '+esc(s.note)+'</div>';
 s.body.forEach((p,i)=>{h+='<p id="bpara'+i+'">'+esc(p)+'</p>'});
 if(s.lesson)h+='<div class="lesson" id="blesson"><b>💡 מה לומדים?</b><div style="margin-top:4px">'+esc(s.lesson)+'</div></div>';
@@ -729,15 +736,16 @@ app.innerHTML=h;window.scrollTo(0,0);updPlayer();
 curStory=s;
 $("playBtn").onclick=()=>{if(rActive){pauseRead()}else if(rPaused&&rStory===s){resumeRead()}else{startRead(s)}};
 $("stopBtn").onclick=()=>{stopSpeak();rStory=null;hlSeg(null)};
-$("rateBtn").onclick=()=>{const r=cycleRate();if(rActive){rGen++;synth.cancel();speakSeg(rIdx)}};
+$("rateBtn").onclick=()=>{const r=cycleRate();if(rActive){pauseRead();resumeRead()}};
 $("askBtn").onclick=()=>{pauseRead();$("qaBar").hidden=false;recTarget="story";var qi=$("qaIn");if(qi)qi.focus();$("qaBar").scrollIntoView({block:"nearest",behavior:"smooth"})};
 $("qaMic").onclick=()=>{if(recording){stopRecorder()}else{recTarget="story";startRecorder()}};
 $("qaSend").onclick=()=>{var q=($("qaIn").value||"").trim();if(q){$("qaIn").value="";storyQuestion(q)}};
 $("qaIn").onkeydown=e=>{if(e.key==="Enter"){var q=(e.target.value||"").trim();if(q){e.target.value="";storyQuestion(q)}}}}
 function toggleRead(sid){read[sid]=!read[sid];saveRead();const m=location.hash.match(/#u(\d+)\/(.+)/);if(m)viewStory(+m[1],m[2])}
-function goUnit(uid){location.hash="#u"+uid}
+function goHome(){if(!location.hash)route();else location.hash=""}
+function goUnit(uid){if(location.hash==="#u"+uid)route();else location.hash="#u"+uid}
 function goStory(uid,sid){location.hash="#u"+uid+"/"+sid}
-function route(){const h=location.hash;let m=h.match(/#u(\d+)\/(.+)/);if(m)return viewStory(+m[1],m[2]);m=h.match(/#u(\d+)/);if(m)return viewUnit(+m[1]);viewHome()}
+function route(){qaGen++;stopSpeak();stopVoice();rStory=null;curStory=null;if(transcribing)recSession++;const h=location.hash;let m=h.match(/#u(\d+)\/(.+)/);if(m)return viewStory(+m[1],m[2]);m=h.match(/#u(\d+)/);if(m)return viewUnit(+m[1]);viewHome()}
 window.addEventListener("hashchange",route);
 applyDark();route();
 // ===== שלב 3: חיפוש חכם + שיחה =====
@@ -802,7 +810,7 @@ var d2=await r2.json();return{text:d2.choices[0].message.content,refs:refsOf(m)}
 async function chatSend(){var i=$("chatin");var q=(i.value||"").trim();if(!q)return;i.value="";
 if(rec){try{rec.onend=null;rec.stop()}catch(e){}recActive=false}
 if(recording){discardRec=true;stopRecorder()}
-if(speakingAnswer){if(synth)synth.cancel();speakingAnswer=false}updMic();
+stopAnswerAudio();if(rActive)pauseRead();updMic();
 chatLog.push({me:true,text:q});renderChat();
 var tp=document.createElement("div");tp.className="typing";tp.id="typing";tp.textContent="כותב תשובה...";$("chatlog").appendChild(tp);$("chatlog").scrollTop=$("chatlog").scrollHeight;
 try{var ans;if(activeKey()){ans=await askLLM(q)}else{await new Promise(function(r){setTimeout(r,250)});ans=composeFree(q)}
@@ -832,4 +840,4 @@ function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key
 </body>
 </html>
 
-<!-- v1.17.19 - selectable Gemini cloud voices with Hebrew previews, saved per device and shared by story/question reading; voice-specific prefetch cache and stale audio cancellation. v1.17.18 - FINAL unit 13 enrichment: 7 stories deepened ~1.6x (יאשיהו, החורבן, יונה, דניאל, עזרא-נחמיה, אסתר, עצמות יבשות), 5 new verified Rashi quotes (יונה ד,יא; דניאל ו,כג; נחמיה ב,ד; אסתר ד,טז; יחזקאל לז,ג), 5 pre-existing dash-defect quotes corrected to verbatim Sefaria - ENRICHMENT TRACK COMPLETE (86 stories); v1.17.17 - text audit: 18 garble/spelling fixes across enriched stories (שמים→שמיים normalization, broken phrases); question-mode read-aloud: answers now play via cloud TTS (same pipeline as stories) with device fallback, plus 🔊 listen buttons on chat answers and story-question answers; v1.17.16 - unit 12 enrichment: 7 stories deepened ~1.6x, 2 new verified Rashi quotes (דממה יט,יב; בתוך עמי ד,יג), 3 pre-existing dash-defect quotes corrected to verbatim Sefaria; v1.17.15 - unit 11 enrichment: 7 stories deepened ~1.6x, 3 new verified Rashi quotes (שמיר ו,ז; עלתו י,ה; קטני יב,י), 3 pre-existing dash-defect quotes corrected to verbatim Sefaria; v1.17.14 - unit 10 enrichment: 7 stories deepened ~1.6x, 3 new verified Rashi quotes (צנור ה,ח; סוטה יח,ט; ומפלטי כב,ב), 4 pre-existing dash-defect quotes corrected to verbatim Sefaria; v1.17.13 - unit 9 enrichment: 7 stories deepened ~1.5x, 2 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.12 - unit 8 enrichment: 6 stories deepened ~1.5x, 2 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.11 - unit 7 enrichment: 7 stories deepened ~1.5x, 3 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.10 - unit 6 enrichment: 7 stories deepened ~1.5x, 3 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.9 - unit 5 enrichment: 7 stories deepened ~1.6x, 6 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.8 - unit 4 enrichment: 7 stories deepened ~1.5x, 5 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.7 - unit 3 enrichment: 7 stories deepened ~1.6x, 5 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.6 - unit 2 enrichment: 5 stories deepened ~1.6x, 4 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.5 - unit 1 enrichment: 5 stories deepened ~1.6x, 5 new verified Rashi quotes, strengthened morals; v1.17.4 - cloud TTS gapless: batched multi-segment requests (~3/story instead of ~9, less quota), parallel prefetch of next 2 batches, char-ratio boundary highlights, seek-resume mid-batch; v1.17.3: direct blob upload, fast chains, SSE answers, Tanach-knowledge fallback -->
+<!-- v1.17.20 - debug fixes: hash navigation, narrow-screen inputs, cloud speed and exact resume, shared prefetch requests, audio cancellation, stale question guards, microphone startup and wake-lock races. v1.17.19 - selectable Gemini cloud voices with Hebrew previews, saved per device and shared by story/question reading; voice-specific prefetch cache and stale audio cancellation. v1.17.18 - FINAL unit 13 enrichment: 7 stories deepened ~1.6x (יאשיהו, החורבן, יונה, דניאל, עזרא-נחמיה, אסתר, עצמות יבשות), 5 new verified Rashi quotes (יונה ד,יא; דניאל ו,כג; נחמיה ב,ד; אסתר ד,טז; יחזקאל לז,ג), 5 pre-existing dash-defect quotes corrected to verbatim Sefaria - ENRICHMENT TRACK COMPLETE (86 stories); v1.17.17 - text audit: 18 garble/spelling fixes across enriched stories (שמים→שמיים normalization, broken phrases); question-mode read-aloud: answers now play via cloud TTS (same pipeline as stories) with device fallback, plus 🔊 listen buttons on chat answers and story-question answers; v1.17.16 - unit 12 enrichment: 7 stories deepened ~1.6x, 2 new verified Rashi quotes (דממה יט,יב; בתוך עמי ד,יג), 3 pre-existing dash-defect quotes corrected to verbatim Sefaria; v1.17.15 - unit 11 enrichment: 7 stories deepened ~1.6x, 3 new verified Rashi quotes (שמיר ו,ז; עלתו י,ה; קטני יב,י), 3 pre-existing dash-defect quotes corrected to verbatim Sefaria; v1.17.14 - unit 10 enrichment: 7 stories deepened ~1.6x, 3 new verified Rashi quotes (צנור ה,ח; סוטה יח,ט; ומפלטי כב,ב), 4 pre-existing dash-defect quotes corrected to verbatim Sefaria; v1.17.13 - unit 9 enrichment: 7 stories deepened ~1.5x, 2 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.12 - unit 8 enrichment: 6 stories deepened ~1.5x, 2 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.11 - unit 7 enrichment: 7 stories deepened ~1.5x, 3 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.10 - unit 6 enrichment: 7 stories deepened ~1.5x, 3 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.9 - unit 5 enrichment: 7 stories deepened ~1.6x, 6 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.8 - unit 4 enrichment: 7 stories deepened ~1.5x, 5 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.7 - unit 3 enrichment: 7 stories deepened ~1.6x, 5 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.6 - unit 2 enrichment: 5 stories deepened ~1.6x, 4 new verified Rashi quotes, pre-existing quotes corrected to verbatim Sefaria; v1.17.5 - unit 1 enrichment: 5 stories deepened ~1.6x, 5 new verified Rashi quotes, strengthened morals; v1.17.4 - cloud TTS gapless: batched multi-segment requests (~3/story instead of ~9, less quota), parallel prefetch of next 2 batches, char-ratio boundary highlights, seek-resume mid-batch; v1.17.3: direct blob upload, fast chains, SSE answers, Tanach-knowledge fallback -->
