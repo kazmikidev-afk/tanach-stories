@@ -1,0 +1,79 @@
+{
+  "storyId": "1-2",
+  "voice": "koda",
+  "sampleRate": 44100,
+  "bitrate": 64000,
+  "segments": [
+    {
+      "index": 0,
+      "el": null,
+      "start": 0,
+      "end": 3.96,
+      "textHash": "b117debf0e3fc172decdcb8f7151be5ad78b2c20980338238cce9c5a80f9e01f"
+    },
+    {
+      "index": 1,
+      "el": "bpara0",
+      "start": 3.96,
+      "end": 41.04,
+      "textHash": "1b95b9dbfb114cc7919c4aeb8904161590a40892106e613e50f1d1d78bcf5774"
+    },
+    {
+      "index": 2,
+      "el": "bpara1",
+      "start": 41.04,
+      "end": 66.68,
+      "textHash": "96e8c967be704432f14b5bce73e2f371631ccc05a96306324901a5e707c386c5"
+    },
+    {
+      "index": 3,
+      "el": "bpara2",
+      "start": 66.68,
+      "end": 101.84,
+      "textHash": "68a0790e50f96d7f0b5135e8ada1319cbaa0cb39a4f084f8e86cf8deb02d4ef3"
+    },
+    {
+      "index": 4,
+      "el": "bpara3",
+      "start": 101.84,
+      "end": 128.32,
+      "textHash": "6a2da6edf1babbf9f9bae5524c46328c196d824d661a905ab25ad1bfe9e06cee"
+    },
+    {
+      "index": 5,
+      "el": "bpara4",
+      "start": 128.32,
+      "end": 157.35999999999999,
+      "textHash": "8c17085d58759d07485f3dcabda7c0750cc4922edb824cd55ada1a4be0c95284"
+    },
+    {
+      "index": 6,
+      "el": "bpara5",
+      "start": 157.35999999999999,
+      "end": 184.55999999999997,
+      "textHash": "03e64f3e11e36b192bfec403ca244c5d3a0aeec79fe00d259024bb0c6ea38002"
+    },
+    {
+      "index": 7,
+      "el": "bpara6",
+      "start": 184.55999999999997,
+      "end": 227.59999999999997,
+      "textHash": "b6a793e827183ebe9a0f7a5f4c18ec6f281260bcf9a52cbac736d4154ef408db"
+    },
+    {
+      "index": 8,
+      "el": "blesson",
+      "start": 227.59999999999997,
+      "end": 273.47999999999996,
+      "textHash": "0b2a43eeb983c2873ea1efb027b0bfca9f4b301f06e8d6ded9074467f17a36b4"
+    },
+    {
+      "index": 9,
+      "el": "brashi0",
+      "start": 273.47999999999996,
+      "end": 316.76,
+      "textHash": "98d2bb56ddffc0becf85eef46436647844e7a0d481e72647602a5a1d961eb5e7"
+    }
+  ],
+  "duration": 316.76
+}
