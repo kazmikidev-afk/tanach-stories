@@ -1,0 +1,79 @@
+{
+  "storyId": "3-2",
+  "voice": "koda",
+  "sampleRate": 44100,
+  "bitrate": 64000,
+  "segments": [
+    {
+      "index": 0,
+      "el": null,
+      "start": 0,
+      "end": 5.2,
+      "textHash": "f0c108b1c34d5e2f9efae041e9d98f4154530f4954ae8fff87c4897d7ee78d42"
+    },
+    {
+      "index": 1,
+      "el": "bpara0",
+      "start": 5.2,
+      "end": 41.56,
+      "textHash": "76864a606e6f13794727b6577de7419582d4a9324f7e8db61c87a645b0caebe5"
+    },
+    {
+      "index": 2,
+      "el": "bpara1",
+      "start": 41.56,
+      "end": 74.28,
+      "textHash": "08b2893e6b1598a12b0a444842c78f651ea7f1f934bee01140154674e94aec8f"
+    },
+    {
+      "index": 3,
+      "el": "bpara2",
+      "start": 74.28,
+      "end": 118.2,
+      "textHash": "593eb345dfae49913097ff4e426ad600680df408506467858a8336fa8aef41db"
+    },
+    {
+      "index": 4,
+      "el": "bpara3",
+      "start": 118.2,
+      "end": 146.76,
+      "textHash": "325ae4c30f50b529d657e97873ab961842db114466589b0c3959ba5e4bc90e03"
+    },
+    {
+      "index": 5,
+      "el": "bpara4",
+      "start": 146.76,
+      "end": 189.32,
+      "textHash": "7e30450455ce1e52eb2b338cc080cf7f2503b897a8acf887ac21012076f40b8c"
+    },
+    {
+      "index": 6,
+      "el": "bpara5",
+      "start": 189.32,
+      "end": 220.51999999999998,
+      "textHash": "262a21a547ef3b1d3edcf036b86aab3c0a10f3e90b0e42f01a47c9dcb7df18cf"
+    },
+    {
+      "index": 7,
+      "el": "blesson",
+      "start": 220.51999999999998,
+      "end": 262.4,
+      "textHash": "5226b16faf6e02e4b6ff2e15bbac42bceb5e60ba2b1a72213c7e187d8b4ec72c"
+    },
+    {
+      "index": 8,
+      "el": "brashi0",
+      "start": 262.4,
+      "end": 304.03999999999996,
+      "textHash": "e289ff048c32468cba8fe5e6b14af2c35cd9af1f0ac39e31c499b54947ceb23e"
+    },
+    {
+      "index": 9,
+      "el": "brashi1",
+      "start": 304.03999999999996,
+      "end": 355.71999999999997,
+      "textHash": "9c135b5253d719aa875697730a41db02cba9443a6e6cab11d4136d6a4b43a30f"
+    }
+  ],
+  "duration": 355.71999999999997
+}

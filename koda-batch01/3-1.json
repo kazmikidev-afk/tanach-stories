@@ -1,0 +1,79 @@
+{
+  "storyId": "3-1",
+  "voice": "koda",
+  "sampleRate": 44100,
+  "bitrate": 64000,
+  "segments": [
+    {
+      "index": 0,
+      "el": null,
+      "start": 0,
+      "end": 5.64,
+      "textHash": "acc0845291e0c83021f0753a74f0af0d1b2e8fff1f2795c52f68207c9236bbf7"
+    },
+    {
+      "index": 1,
+      "el": "bpara0",
+      "start": 5.64,
+      "end": 31.240000000000002,
+      "textHash": "8434a12ba01a12cdc7087831a5c474ff76adbfa0f67281fe4ca18bafefc579cf"
+    },
+    {
+      "index": 2,
+      "el": "bpara1",
+      "start": 31.240000000000002,
+      "end": 74.03999999999999,
+      "textHash": "b34045b0f1d5c774f55358e3ec5a6a92f5d2388e7c6f2a4f7e638c62398a92ed"
+    },
+    {
+      "index": 3,
+      "el": "bpara2",
+      "start": 74.03999999999999,
+      "end": 104.88,
+      "textHash": "1faa18877599ed77775f80056002453f34f44dd87d9f6ee0f4d2c939556f0a80"
+    },
+    {
+      "index": 4,
+      "el": "bpara3",
+      "start": 104.88,
+      "end": 143.28,
+      "textHash": "e0ff7e5f2be4a619a8412a94e8df5613c86e2de48d4debea0f6fe6cab9841c17"
+    },
+    {
+      "index": 5,
+      "el": "bpara4",
+      "start": 143.28,
+      "end": 169.2,
+      "textHash": "add57e7ef609caa31832bedc5c5bfccf2a3863c0719c885f8f595be9c418dfc2"
+    },
+    {
+      "index": 6,
+      "el": "bpara5",
+      "start": 169.2,
+      "end": 206.72,
+      "textHash": "4707011f77f423c1beb81f012127ebadb4dd2e52a86ff3eed5a4993d54882982"
+    },
+    {
+      "index": 7,
+      "el": "blesson",
+      "start": 206.72,
+      "end": 243.07999999999998,
+      "textHash": "aa118f4710184ffb8966c5ddc46088afd719bb5cff9724c31f9e9a98a56e6c18"
+    },
+    {
+      "index": 8,
+      "el": "brashi0",
+      "start": 243.07999999999998,
+      "end": 286.24,
+      "textHash": "76d65fd8fc391484d7c0f3efd225b7367b49940426fbcf1dfcc33404d5c86b1d"
+    },
+    {
+      "index": 9,
+      "el": "brashi1",
+      "start": 286.24,
+      "end": 323.72,
+      "textHash": "7b2d02a6916126c30abcbea74ca322691ac2432061d87b526b12a79769401620"
+    }
+  ],
+  "duration": 323.72
+}
