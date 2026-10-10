@@ -1,0 +1,86 @@
+{
+  "storyId": "2-2",
+  "voice": "koda",
+  "sampleRate": 44100,
+  "bitrate": 64000,
+  "segments": [
+    {
+      "index": 0,
+      "el": null,
+      "start": 0,
+      "end": 3.84,
+      "textHash": "4907c60c87a965e2ee23d3affb165292d38e48a4e3e9bb7b66a11963ce37db06"
+    },
+    {
+      "index": 1,
+      "el": "bpara0",
+      "start": 3.84,
+      "end": 32.4,
+      "textHash": "212461f4ce556bd9d6d8cb755ac5074169480d8fe432933cb5a3fd17a719078d"
+    },
+    {
+      "index": 2,
+      "el": "bpara1",
+      "start": 32.4,
+      "end": 58.4,
+      "textHash": "84c9b2fcf31c72f08998776071e1b917ab83b53117d0e47e173246e220894631"
+    },
+    {
+      "index": 3,
+      "el": "bpara2",
+      "start": 58.4,
+      "end": 90.36,
+      "textHash": "d06e7e7a582500f9b6e3cf81a9db2c00ef2abb5c99d85081fc42d42697af8a87"
+    },
+    {
+      "index": 4,
+      "el": "bpara3",
+      "start": 90.36,
+      "end": 118.92,
+      "textHash": "86ad0897d1f272147920121449e7a631a745ebbdb207aa7bb5c83113a0b78fa3"
+    },
+    {
+      "index": 5,
+      "el": "bpara4",
+      "start": 118.92,
+      "end": 141.28,
+      "textHash": "d06d88cd46923b71fdf715630f67e28ba2a763528d171d9f01ea28a822ee5627"
+    },
+    {
+      "index": 6,
+      "el": "bpara5",
+      "start": 141.28,
+      "end": 171.92000000000002,
+      "textHash": "f14b273852a0833b39a27ae41050b0f21912c95d07699fac787151c751836af0"
+    },
+    {
+      "index": 7,
+      "el": "blesson",
+      "start": 171.92000000000002,
+      "end": 202.88000000000002,
+      "textHash": "6b66c24f48841b410cc76a7a06ec2b0e2bd52f9503841ae3902857399550b266"
+    },
+    {
+      "index": 8,
+      "el": "brashi0",
+      "start": 202.88000000000002,
+      "end": 240.60000000000002,
+      "textHash": "56478ba5c78923e7935aa1d09101bd8cc37f6e33cc914b93c109697cec01aace"
+    },
+    {
+      "index": 9,
+      "el": "brashi1",
+      "start": 240.60000000000002,
+      "end": 282.56,
+      "textHash": "35b4d4ac838e8e956ab82fae25c8c123245f08c4c4271411d7dff9e1cfc498cd"
+    },
+    {
+      "index": 10,
+      "el": "brashi2",
+      "start": 282.56,
+      "end": 315.56,
+      "textHash": "8b0b70923f757e60a4dc2bf67130ca7ee3d90ba17517683d6ff28061559a007b"
+    }
+  ],
+  "duration": 315.56
+}

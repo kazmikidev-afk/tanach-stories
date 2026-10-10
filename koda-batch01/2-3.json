@@ -1,0 +1,86 @@
+{
+  "storyId": "2-3",
+  "voice": "koda",
+  "sampleRate": 44100,
+  "bitrate": 64000,
+  "segments": [
+    {
+      "index": 0,
+      "el": null,
+      "start": 0,
+      "end": 3.2,
+      "textHash": "469720b0099792156b13bd5c93751c10047546bbc108d78ce4152838ff176fc9"
+    },
+    {
+      "index": 1,
+      "el": "bpara0",
+      "start": 3.2,
+      "end": 28.88,
+      "textHash": "2cecaaee016708173d8f4b33aae19865ba64a7095b6dc836996ca821ecc2a396"
+    },
+    {
+      "index": 2,
+      "el": "bpara1",
+      "start": 28.88,
+      "end": 59.12,
+      "textHash": "71db47aa24878254fe0c6906eb567a9c28ad20c28cf92233d1e6f105864aa442"
+    },
+    {
+      "index": 3,
+      "el": "bpara2",
+      "start": 59.12,
+      "end": 89.92,
+      "textHash": "656e4f3018df44d308d41db74d5790c19ee6c8cc77c84f690437fd555435b489"
+    },
+    {
+      "index": 4,
+      "el": "bpara3",
+      "start": 89.92,
+      "end": 113.48,
+      "textHash": "c6132e08a19285e22e05350297f3dcbc64cbc72f4ce584376dccde8d510a2810"
+    },
+    {
+      "index": 5,
+      "el": "bpara4",
+      "start": 113.48,
+      "end": 148.6,
+      "textHash": "304e9348427848a68539278c4045a48a521c0cd6451050dc6a92cfed213db4de"
+    },
+    {
+      "index": 6,
+      "el": "bpara5",
+      "start": 148.6,
+      "end": 164.12,
+      "textHash": "023f69db19817cba3e52ba9d90316f7f1a7bd62479d68e11495edf3c034acbaa"
+    },
+    {
+      "index": 7,
+      "el": "blesson",
+      "start": 164.12,
+      "end": 198.44,
+      "textHash": "f1d3b9490992b94f729af0dfec78240b94b64e0a59006828e47442eb30c3f16b"
+    },
+    {
+      "index": 8,
+      "el": "brashi0",
+      "start": 198.44,
+      "end": 251.88,
+      "textHash": "e6491f934390ec9c2517e13970a1aa7e7ca9e73a95c154fe90073507f6435fbc"
+    },
+    {
+      "index": 9,
+      "el": "brashi1",
+      "start": 251.88,
+      "end": 292.44,
+      "textHash": "c34ae6c5d92320ae6dad71c01841c900ce49c6913d5edf0ef4bc9e1e7cbb3c58"
+    },
+    {
+      "index": 10,
+      "el": "brashi2",
+      "start": 292.44,
+      "end": 329.36,
+      "textHash": "02b239c59cb7d8ee388f76f5197673cfc8fae5802b2e0c7fe05190c7096c33a2"
+    }
+  ],
+  "duration": 329.36
+}

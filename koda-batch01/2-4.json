@@ -1,0 +1,79 @@
+{
+  "storyId": "2-4",
+  "voice": "koda",
+  "sampleRate": 44100,
+  "bitrate": 64000,
+  "segments": [
+    {
+      "index": 0,
+      "el": null,
+      "start": 0,
+      "end": 2.92,
+      "textHash": "705929d7ec66aaec89168df5bd0ad837579b49c817f4139a2ec6c6ce715cf219"
+    },
+    {
+      "index": 1,
+      "el": "bpara0",
+      "start": 2.92,
+      "end": 33.28,
+      "textHash": "23e0b951e163e9857c3c5924cbdd576091e25b6fe9d730d494f915d6dc2e0a48"
+    },
+    {
+      "index": 2,
+      "el": "bpara1",
+      "start": 33.28,
+      "end": 69.72,
+      "textHash": "0f858262de8725ff02cfb59d259fd9adf10075796b509cc8a3e894997a9fc927"
+    },
+    {
+      "index": 3,
+      "el": "bpara2",
+      "start": 69.72,
+      "end": 87.0,
+      "textHash": "90cf26eb3783ab312388d937a66efb1505c6657771c0a4d587279a086894fb61"
+    },
+    {
+      "index": 4,
+      "el": "bpara3",
+      "start": 87.0,
+      "end": 114.6,
+      "textHash": "614ac94ee31bbda5bac2211dce3ac64ac06b1abb9740ddc390e70d2f64b81407"
+    },
+    {
+      "index": 5,
+      "el": "bpara4",
+      "start": 114.6,
+      "end": 153.72,
+      "textHash": "72095111d59a6170cb0f5f29f93f42bf06c93ad194b58b7939203e83a4f2b16e"
+    },
+    {
+      "index": 6,
+      "el": "bpara5",
+      "start": 153.72,
+      "end": 178.24,
+      "textHash": "b5552ec019062d0f0d7ebf60f589fc1823e467d4373414aa72faab2744b14cba"
+    },
+    {
+      "index": 7,
+      "el": "blesson",
+      "start": 178.24,
+      "end": 211.8,
+      "textHash": "c581ca4f8317068df08cf8a624aa791b665bbaf1542de216201874eb096779ee"
+    },
+    {
+      "index": 8,
+      "el": "brashi0",
+      "start": 211.8,
+      "end": 245.48000000000002,
+      "textHash": "7470d0c4751ef8ccb4eef8fd1fbdbd4d8069e22b400081a74fae9118eac08399"
+    },
+    {
+      "index": 9,
+      "el": "brashi1",
+      "start": 245.48000000000002,
+      "end": 284.40000000000003,
+      "textHash": "060d26c4687a87f80153d0625b226173ef0c7ba9dca7378a08b10e9b8bdaf9a6"
+    }
+  ],
+  "duration": 284.40000000000003
+}
