@@ -1,0 +1,79 @@
+{
+  "storyId": "5-1",
+  "voice": "koda",
+  "sampleRate": 44100,
+  "bitrate": 64000,
+  "segments": [
+    {
+      "index": 0,
+      "el": null,
+      "start": 0,
+      "end": 6.08,
+      "textHash": "d4bedb988fd70fe391d4a6a95f2020e667f77e3dcc085cf3d62e94f42f262f86"
+    },
+    {
+      "index": 1,
+      "el": "bpara0",
+      "start": 6.08,
+      "end": 46.04,
+      "textHash": "2ec9a17722a16b39e503da60e8ffbbd044a704625ecfc711961ea9286a4415a7"
+    },
+    {
+      "index": 2,
+      "el": "bpara1",
+      "start": 46.04,
+      "end": 82.16,
+      "textHash": "a5d576ef6c51bc9c3f68d08db794f7b882db06119478618889a98f846b7324b0"
+    },
+    {
+      "index": 3,
+      "el": "bpara2",
+      "start": 82.16,
+      "end": 116.72,
+      "textHash": "cf2dcea5c3821bdfd0d43c65f170a66575c0064c7adbdc33c1bdd64fe1b3badc"
+    },
+    {
+      "index": 4,
+      "el": "bpara3",
+      "start": 116.72,
+      "end": 160.04,
+      "textHash": "5a008bd3135097f9d8737dde2b3f2c2f2b2119d758f519e479bd59a37db3c15e"
+    },
+    {
+      "index": 5,
+      "el": "bpara4",
+      "start": 160.04,
+      "end": 191.6,
+      "textHash": "d1bd52856180d9cd114c6d2bde4f33b79bf8a644eb8b614ff8950671197274cc"
+    },
+    {
+      "index": 6,
+      "el": "bpara5",
+      "start": 191.6,
+      "end": 216.4,
+      "textHash": "c8d1eb8b1a2134502b4d347c8f69f2c9c982aeda1a17776028755f80d4aee8ea"
+    },
+    {
+      "index": 7,
+      "el": "blesson",
+      "start": 216.4,
+      "end": 254.16,
+      "textHash": "ca52cfbd399d94cf01a424b1b4b50409d1a2838e9876ad587325218b1c1acf61"
+    },
+    {
+      "index": 8,
+      "el": "brashi0",
+      "start": 254.16,
+      "end": 292.15999999999997,
+      "textHash": "e664ac3124a34f32896dfff604433c7b84ef57841655136b0a56a02278404fd5"
+    },
+    {
+      "index": 9,
+      "el": "brashi1",
+      "start": 292.15999999999997,
+      "end": 339.59999999999997,
+      "textHash": "8203349e08b54b8b5af421bb27fe733f25dbdaf137b464846f0ceb75dbd1ff54"
+    }
+  ],
+  "duration": 339.59999999999997
+}
