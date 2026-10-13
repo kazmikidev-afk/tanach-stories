@@ -410,7 +410,7 @@ for(var i=steps.length-1;i>=0&&!b64;i--){var cc=steps[i].content||[];for(var j=c
 if(!b64)throw new Error("no audio");
 var bin=atob(b64);var bytes=new Uint8Array(bin.length);for(var k=0;k<bin.length;k++)bytes[k]=bin.charCodeAt(k);
 localStorage.removeItem("ts_tts_quota_until");return new Blob([bytes],{type:"audio/wav"})}
-function segDone(i,g){if(!rActive||g!==rGen)return;if(i+1<rSegs.length)speakSeg(i+1);else{rActive=false;rStory=null;relWake();updPlayer();hlSeg(null)}}
+function segDone(i,g){if(!rActive||g!==rGen)return;if(i+1<rSegs.length)speakSeg(i+1);else{rActive=false;rStory=null;relWake();updPlayer();hlSeg(null);if(window.gcAutoNext)gcAutoNext()}}
 function speakDeviceSeg(i,g){if(!rActive||!synth)return;
 var v=heVoice();var rate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");
 var u=new SpeechSynthesisUtterance(rSegs[i].t);u.lang="he-IL";if(v)u.voice=v;u.rate=rate;u.pitch=1.0;
@@ -445,7 +445,7 @@ var saved=rResume;if(saved&&saved.key===ttsCacheKey(bt2.t)){cloudAudio.currentTi
 else if(startSeg!==undefined&&startSeg>bt2.idxs[0]){var off=batchOffsetSec(bt2,startSeg,cloudAudio.duration);if(isFinite(off)&&off>0)cloudAudio.currentTime=off}
 scheduleBoundaries(bi,g)};
 cloudAudio.onended=function(){clearBoundaryTimers();if(!rActive||g!==rGen)return;
-if(bi+1<rBatches.length)playCloudBatch(bi+1,g);else{rActive=false;rStory=null;relWake();updPlayer();hlSeg(null)}};
+if(bi+1<rBatches.length)playCloudBatch(bi+1,g);else{rActive=false;rStory=null;relWake();updPlayer();hlSeg(null);if(window.gcAutoNext)gcAutoNext()}};
 cloudAudio.onerror=function(){clearBoundaryTimers();if(rActive&&g===rGen){cloudFailed=true;var s2=$("pState");if(s2)s2.textContent="קריאת הענן לא זמינה כרגע - עובר לקול המכשיר";speakDeviceSeg(rIdx,g)}};
 cloudAudio.play().catch(function(){clearBoundaryTimers();if(rActive&&g===rGen){cloudFailed=true;speakDeviceSeg(rIdx,g)}});
 updPlayer();
@@ -473,7 +473,7 @@ function hostedHighlight(){if(!hostedAudio||!rStory||!rActive)return;var m=hoste
 function playHosted(i,g){var story=rStory,m=story&&hostedMap(story.id);if(!m){rActive=false;rPaused=true;relWake();updPlayer();$("pState").textContent="הקלטת הסיפור חסרה. נסו שוב אחרי חיבור לרשת.";return}
 var key=hostedKey(story.id),saved=rResume&&rResume.key===key?rResume.time:m.segments[i].start;rResume=null;
 if(!hostedAudio)hostedAudio=new Audio();var a=hostedAudio;a.pause();a.onloadedmetadata=null;a.onended=null;a.onerror=null;a.ontimeupdate=null;
-var run=function(src){if(g!==rGen||!rActive||rStory!==story)return;a.src=src;a.playbackRate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");a.onloadedmetadata=function(){if(g!==rGen||!rActive)return;a.currentTime=Math.min(saved,Math.max(0,a.duration-.01))};a.ontimeupdate=hostedHighlight;a.onended=function(){if(g!==rGen)return;rActive=false;rPaused=false;rResume=null;rStory=null;relWake();updPlayer();hlSeg(null)};
+var run=function(src){if(g!==rGen||!rActive||rStory!==story)return;a.src=src;a.playbackRate=parseFloat(localStorage.getItem("tsr-rate")||"0.95");a.onloadedmetadata=function(){if(g!==rGen||!rActive)return;a.currentTime=Math.min(saved,Math.max(0,a.duration-.01))};a.ontimeupdate=hostedHighlight;a.onended=function(){if(g!==rGen)return;rActive=false;rPaused=false;rResume=null;rStory=null;relWake();updPlayer();hlSeg(null);if(window.gcAutoNext)gcAutoNext()};
 var failed=function(){if(g!==rGen)return;rResume={key:key,time:a.currentTime||saved};rActive=false;rPaused=true;relWake();updPlayer();$("pState").textContent="לא הצלחנו לטעון את ההקלטה. בדקו חיבור ולחצו להמשך."};a.onerror=failed;a.play().then(function(){if(g===rGen)cacheHosted(story.id)}).catch(failed)};
 if(hostedUrls[key]){run(hostedUrls[key]);return}ttsDiskRead(key).then(function(blob){if(g!==rGen)return;if(blob){hostedUrls[key]=URL.createObjectURL(blob);run(hostedUrls[key])}else run(hostedSrc(story.id))})}
 function speakSeg(i){if(!rActive)return;rIdx=i;var g=++rGen;updPlayer();hlSeg(rSegs[i].el);playHosted(i,g)}
@@ -873,6 +873,70 @@ function setProvider(p){localStorage.setItem("ts_llm_provider",p);var s=$("chats
 function saveKey(){var v=$("oaikey").value.trim();if(v&&v!=="••••••••"){localStorage.setItem(provider()==="gemini"?"ts_gemini_key":"ts_openai_key",v);$("oaikey").value="••••••••"}renderChat()}
 function clearKey(){localStorage.removeItem(provider()==="gemini"?"ts_gemini_key":"ts_openai_key");$("oaikey").value="";renderChat()}
 
+</script>
+<style id="gcAutoCss">
+#gcAuto{position:fixed;inset:0;z-index:9999;background:rgba(60,45,20,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+#gcAuto .box{background:#fffdf8;border:4px solid #f2b84b;border-radius:28px;box-shadow:0 10px 30px rgba(60,45,20,.35);max-width:380px;width:100%;padding:22px 18px;text-align:center;color:#2d2a26}
+#gcAuto h2{margin:6px 0 4px;font-size:1.5rem;color:#8a5a2b}
+#gcAuto p{margin:6px 0 12px;font-size:1.05rem}
+#gcAuto .ring{position:relative;width:150px;height:150px;margin:6px auto 10px}
+#gcAuto .ring svg{width:150px;height:150px;transform:rotate(-90deg)}
+#gcAuto .ring .n{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem;font-weight:800;color:#2e6e5e}
+#gcAuto .ring .e{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:1.8rem;animation:gcWob 1s ease-in-out infinite}
+@keyframes gcWob{0%,100%{transform:translateX(-50%) rotate(-10deg)}50%{transform:translateX(-50%) rotate(10deg)}}
+#gcAuto button{display:block;width:100%;border:0;border-radius:22px;padding:16px 10px;font:inherit;font-size:1.25rem;font-weight:800;color:#fff;background:#2e6e5e;box-shadow:0 5px 0 #1d4a3f;cursor:pointer;margin-top:8px}
+#gcAuto button:active{transform:translateY(3px);box-shadow:0 2px 0 #1d4a3f}
+#gcAuto button.sec{background:#f6f1e7;color:#8a5a2b;box-shadow:0 4px 0 #d9ccb0;font-size:1.05rem}
+.gc-autolbl{display:inline-flex;align-items:center;gap:6px;font-size:.9rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){#gcAuto .ring .e{animation:none}}
+</style>
+<script>
+(function(){
+var chain=0,autoFlag=false,tmr=null,tw=null;
+var AK='ts_autonext';
+function on(){return localStorage.getItem(AK)!=='0'}
+function removeBox(){var b=document.getElementById('gcAuto');if(b)b.remove();clearInterval(tmr);tmr=null;clearTimeout(tw);document.removeEventListener('keydown',esc)}
+function esc(e){}
+function nextOf(){
+ var s=curStory;if(!s)return null;
+ for(var i=0;i<UNITS.length;i++){var u=UNITS[i],k=u.stories.indexOf(s);if(k>=0){
+  if(k<u.stories.length-1)return {uid:u.id,sid:u.stories[k+1].id};
+  for(var j=i+1;j<UNITS.length;j++){if(UNITS[j].stories.length)return {uid:UNITS[j].id,sid:UNITS[j].stories[0].id}}
+  return null}}
+ return null}
+function playNext(n){
+ goStory(n.uid,n.sid);
+ var t0=Date.now();(function w(){var st=null;for(var i=0;i<UNITS.length&&!st;i++){st=UNITS[i].stories.find(function(x){return x.id===n.sid})}
+  if(curStory&&curStory===st){autoFlag=true;try{startRead(curStory)}finally{autoFlag=false}return}
+  if(Date.now()-t0<3000)tw=setTimeout(w,150)})()}
+function box(html){removeBox();var d=document.createElement('div');d.id='gcAuto';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.innerHTML='<div class="box">'+html+'</div>';document.body.appendChild(d);return d}
+function endScreen(msg){
+ box('<div style="font-size:3rem">🌙</div><h2>'+msg+'</h2><p>ההקראה נעצרה. אפשר לנוח עכשיו.</p><button id="gcAgain">▶ אני רוצה להמשיך</button>');
+ document.getElementById('gcAgain').onclick=function(){removeBox();chain=0;var n=nextOf();if(n)playNext(n)};
+ try{window.close()}catch(e){}
+}
+function countdown(){
+ var n=nextOf();
+ var R=62,C=2*Math.PI*R,total=30000,end=Date.now()+total;
+ box('<h2>עוד שומעים? 🐑</h2><p>שמענו כבר 3 סיפורים ברצף. לחצו כדי להמשיך, אחרת ההקראה תיעצר.</p><div class="ring" aria-live="off"><span class="e">⏰</span><svg viewBox="0 0 150 150"><circle cx="75" cy="75" r="'+R+'" fill="none" stroke="#efe6d2" stroke-width="14"/><circle id="gcArc" cx="75" cy="75" r="'+R+'" fill="none" stroke="#f2b84b" stroke-width="14" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="0"/></svg><div class="n" id="gcN">30</div></div><button id="gcOk">👍 כן, ממשיכים!</button><button class="sec" id="gcNo">לא, מספיק להיום</button>');
+ var arc=document.getElementById('gcArc'),num=document.getElementById('gcN');
+ function stop(){removeBox();endScreen('מספיק להיום, לילה טוב!')}
+ document.getElementById('gcOk').onclick=function(){removeBox();chain=0;if(n)playNext(n);else endScreen('סיימנו את כל הסיפורים!')};
+ document.getElementById('gcNo').onclick=stop;
+ document.getElementById('gcOk').focus();
+ tmr=setInterval(function(){var left=Math.max(0,end-Date.now());num.textContent=Math.ceil(left/1000);arc.setAttribute('stroke-dashoffset',String(C*(1-left/total)));if(left<=0){clearInterval(tmr);tmr=null;stop()}},250);
+}
+window.gcAutoNext=function(){
+ if(!on()||!curStory)return;
+ chain++;
+ var n=nextOf();
+ if(!n){endScreen('סיימנו את כל הסיפורים!');return}
+ if(chain>=3){countdown();return}
+ playNext(n)};
+var osr=startRead;startRead=function(st){if(!autoFlag)chain=0;return osr(st)};
+var ovs=viewStory;viewStory=function(uid,sid){var r=ovs(uid,sid);var p=document.querySelector('.player');if(p&&!p.querySelector('.gc-autolbl')){var l=document.createElement('label');l.className='gc-autolbl';l.innerHTML='<input type="checkbox" id="gcAutoChk"> הסיפור הבא אוטומטית';p.appendChild(l);var c=l.firstChild;c.checked=on();c.onchange=function(){localStorage.setItem(AK,c.checked?'1':'0')}}return r};
+window.addEventListener('hashchange',function(){if(!autoFlag&&document.getElementById('gcAuto')){removeBox();chain=0}});
+})();
 </script>
 </body>
 </html>
