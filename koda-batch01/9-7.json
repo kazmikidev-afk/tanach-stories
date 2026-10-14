@@ -1,0 +1,58 @@
+{
+  "storyId": "9-7",
+  "voice": "koda",
+  "sampleRate": 44100,
+  "bitrate": 64000,
+  "segments": [
+    {
+      "index": 0,
+      "el": null,
+      "start": 0,
+      "end": 5.75,
+      "textHash": "2b8a819821e68a8c0c75165f6fc57b2a1e8ce51e8256e76a99e4c3bd507fa728"
+    },
+    {
+      "index": 1,
+      "el": "bpara0",
+      "start": 5.75,
+      "end": 37.88,
+      "textHash": "db60f91896cb5e072546d996379e8d0ffac1e238353df64e0a3f388e38f6db11"
+    },
+    {
+      "index": 2,
+      "el": "bpara1",
+      "start": 37.88,
+      "end": 66.98,
+      "textHash": "bc58c72cd517c6602851b52425c38a5d7d4f8ea58e2ee675c6d97530e0da123f"
+    },
+    {
+      "index": 3,
+      "el": "bpara2",
+      "start": 66.98,
+      "end": 90.04,
+      "textHash": "065bbd7e2288f30098edec49975f79d2f523de9e6f4766224d381aa340970790"
+    },
+    {
+      "index": 4,
+      "el": "bpara3",
+      "start": 90.04,
+      "end": 117.74000000000001,
+      "textHash": "ed13d9a0ed1fabda9c73b8dc874425e1064fb6ff2231642d9b5c99eafdf7f35e"
+    },
+    {
+      "index": 5,
+      "el": "bpara4",
+      "start": 117.74000000000001,
+      "end": 150.76000000000002,
+      "textHash": "13f0b37571dc8aa5692aa26a62e90c9ae999a44a4dda7a19c299ccb4e97a1fab"
+    },
+    {
+      "index": 6,
+      "el": "blesson",
+      "start": 150.76000000000002,
+      "end": 176.96,
+      "textHash": "2ec978666492578fc7f4f49771ac8bc019d8b9033b41c08f64f48dd3057a9004"
+    }
+  ],
+  "duration": 176.96
+}

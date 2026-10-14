@@ -1,0 +1,58 @@
+{
+  "storyId": "10-6",
+  "voice": "koda",
+  "sampleRate": 44100,
+  "bitrate": 64000,
+  "segments": [
+    {
+      "index": 0,
+      "el": null,
+      "start": 0,
+      "end": 4.4,
+      "textHash": "08d9a232b57f26a907d2e76390efccf69dd3b3c190f6b4ef09daa28c0e088d6d"
+    },
+    {
+      "index": 1,
+      "el": "bpara0",
+      "start": 4.4,
+      "end": 43.1,
+      "textHash": "780f571ecc981596a85342656d6a3b484770903098e08e0283f0838563c269b7"
+    },
+    {
+      "index": 2,
+      "el": "bpara1",
+      "start": 43.1,
+      "end": 73.4,
+      "textHash": "efdda9c05463b8a700fb9e44df12c7edee9dce157bdcb300c518b98c859ae825"
+    },
+    {
+      "index": 3,
+      "el": "bpara2",
+      "start": 73.4,
+      "end": 107.4,
+      "textHash": "14ca4eab06323d668e9065aff02ec3ec627a1ebddee816a534424d0ae006b427"
+    },
+    {
+      "index": 4,
+      "el": "bpara3",
+      "start": 107.4,
+      "end": 125.80000000000001,
+      "textHash": "ca68fec76c385ec072f6e0010ebec85a25096da1b24474431e7906eaed03413c"
+    },
+    {
+      "index": 5,
+      "el": "blesson",
+      "start": 125.80000000000001,
+      "end": 143.84,
+      "textHash": "44f333e75dc984252b03fa83258cef0bb2e2602c7b11995f0779a13121065f0e"
+    },
+    {
+      "index": 6,
+      "el": "brashi0",
+      "start": 143.84,
+      "end": 180.24,
+      "textHash": "61a6aa01950a5181b5ef8123879fc62d3a7601845bdaf10d8f2e8d83a8724ec6"
+    }
+  ],
+  "duration": 180.24
+}
